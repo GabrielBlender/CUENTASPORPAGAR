@@ -16,7 +16,8 @@ export const loginSchema = z.object({
 
 // Empresa
 export const empresaSchema = z.object({
-  nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
+  nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres').optional(),
+  razon_social: z.string().min(3, 'La razón social debe tener al menos 3 caracteres').optional(),
   rfc: z
     .string()
     .min(1, 'RFC/RUT es requerido')
@@ -46,6 +47,9 @@ export const empresaSchema = z.object({
   email: z.string().email('Email inválido').optional(),
   telefono: z.string().optional(),
   activa: z.boolean().optional(),
+}).refine((data) => data.nombre || data.razon_social, {
+  message: "Debe proporcionar 'nombre' o 'razon_social'",
+  path: ['nombre'],
 });
 
 // Factura

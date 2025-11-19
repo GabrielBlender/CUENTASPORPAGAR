@@ -112,6 +112,8 @@ export default function EmpresasPage() {
         payload.telefono = formData.telefono.trim();
       }
 
+      console.log('📤 Enviando payload:', payload);
+
       const res = await fetch('/api/empresas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

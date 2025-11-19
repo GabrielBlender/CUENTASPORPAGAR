@@ -38,19 +38,29 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('📦 Body recibido:', JSON.stringify(body, null, 2));
+    
     const data = empresaSchema.parse(body);
+    console.log('✅ Data validada:', JSON.stringify(data, null, 2));
+
+    // Normalizar nombre: usar razon_social si nombre no está presente
+    const normalizedData = {
+      ...data,
+      nombre: data.nombre || data.razon_social,
+      razon_social: data.razon_social || data.nombre,
+    };
 
     const db = await getDatabase();
 
     // Verificar si el RFC ya existe
-    const existingEmpresa = await db.collection('empresas').findOne({ rfc: data.rfc });
+    const existingEmpresa = await db.collection('empresas').findOne({ rfc: normalizedData.rfc });
     if (existingEmpresa) {
       return NextResponse.json({ error: 'El RFC ya está registrado' }, { status: 409 });
     }
 
     const newEmpresa = {
-      ...data,
-      activa: data.activa ?? true,
+      ...normalizedData,
+      activa: normalizedData.activa ?? true,
       created_at: new Date(),
       updated_at: new Date(),
     };
