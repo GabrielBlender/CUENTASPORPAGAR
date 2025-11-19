@@ -84,19 +84,41 @@ export default function EmpresasPage() {
 
   const handleCreateEmpresa = async () => {
     try {
+      // Transformar formData al formato esperado por el schema
+      const payload: any = {
+        nombre: formData.nombre,
+        rfc: formData.rfc,
+      };
+
+      // Agregar campos opcionales solo si tienen valor
+      if (formData.direccion) {
+        payload.direccion = formData.direccion;
+      }
+      if (formData.email) {
+        payload.email = formData.email;
+      }
+      if (formData.telefono) {
+        payload.telefono = formData.telefono;
+      }
+
       const res = await fetch('/api/empresas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
+
+      const data = await res.json();
 
       if (res.ok) {
         setOpenDialog(false);
         setFormData({ nombre: '', rfc: '', direccion: '', telefono: '', email: '' });
         fetchEmpresas();
+      } else {
+        alert(data.error || 'Error al crear empresa');
       }
     } catch (error) {
       console.error('Error creating empresa:', error);
+      alert('Error al crear empresa');
     }
   };
 

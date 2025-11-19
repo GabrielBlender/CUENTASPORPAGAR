@@ -21,19 +21,30 @@ export const empresaSchema = z.object({
     .string()
     .regex(/^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/, 'RFC inválido')
     .transform((val) => val.toUpperCase()),
-  direccion: z.object({
-    calle: z.string().min(1, 'Calle es requerida'),
-    numero: z.string().min(1, 'Número es requerido'),
-    colonia: z.string().min(1, 'Colonia es requerida'),
-    ciudad: z.string().min(1, 'Ciudad es requerida'),
-    estado: z.string().min(1, 'Estado es requerido'),
-    cp: z.string().regex(/^\d{5}$/, 'Código postal inválido'),
-  }),
-  contacto: z.object({
-    nombre: z.string().min(1, 'Nombre de contacto es requerido'),
-    email: z.string().email('Email inválido'),
-    telefono: z.string().min(10, 'Teléfono inválido'),
-  }),
+  direccion: z.union([
+    z.object({
+      calle: z.string().min(1, 'Calle es requerida'),
+      numero: z.string().min(1, 'Número es requerido'),
+      colonia: z.string().min(1, 'Colonia es requerida'),
+      ciudad: z.string().min(1, 'Ciudad es requerida'),
+      estado: z.string().min(1, 'Estado es requerido'),
+      cp: z.string().regex(/^\d{5}$/, 'Código postal inválido'),
+    }),
+    z.string()
+  ]).optional(),
+  contacto: z.union([
+    z.object({
+      nombre: z.string().min(1, 'Nombre de contacto es requerido'),
+      email: z.string().email('Email inválido'),
+      telefono: z.string().min(10, 'Teléfono inválido'),
+    }),
+    z.object({
+      email: z.string().email('Email inválido').optional(),
+      telefono: z.string().optional(),
+    })
+  ]).optional(),
+  email: z.string().email('Email inválido').optional(),
+  telefono: z.string().optional(),
   activa: z.boolean().optional(),
 });
 
