@@ -84,21 +84,32 @@ export default function EmpresasPage() {
 
   const handleCreateEmpresa = async () => {
     try {
+      // Validar campos requeridos
+      if (!formData.nombre || formData.nombre.trim().length < 3) {
+        alert('El nombre de la empresa debe tener al menos 3 caracteres');
+        return;
+      }
+
+      if (!formData.rfc || formData.rfc.trim().length === 0) {
+        alert('El RFC/RUT es requerido');
+        return;
+      }
+
       // Transformar formData al formato esperado por el schema
       const payload: any = {
-        nombre: formData.nombre,
-        rfc: formData.rfc,
+        nombre: formData.nombre.trim(),
+        rfc: formData.rfc.trim().toUpperCase(),
       };
 
       // Agregar campos opcionales solo si tienen valor
-      if (formData.direccion) {
-        payload.direccion = formData.direccion;
+      if (formData.direccion && formData.direccion.trim()) {
+        payload.direccion = formData.direccion.trim();
       }
-      if (formData.email) {
-        payload.email = formData.email;
+      if (formData.email && formData.email.trim()) {
+        payload.email = formData.email.trim();
       }
-      if (formData.telefono) {
-        payload.telefono = formData.telefono;
+      if (formData.telefono && formData.telefono.trim()) {
+        payload.telefono = formData.telefono.trim();
       }
 
       const res = await fetch('/api/empresas', {
@@ -281,9 +292,10 @@ export default function EmpresasPage() {
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
             />
             <TextField
-              label="RUT/CUIT"
-              placeholder="Ej: 20-12345678-9"
+              label="RFC/RUT/CUIT *"
+              placeholder="Ej: ABC123456XYZ o 20-12345678-9"
               fullWidth
+              required
               value={formData.rfc}
               onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
             />

@@ -19,7 +19,7 @@ export const empresaSchema = z.object({
   nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
   rfc: z
     .string()
-    .regex(/^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/, 'RFC inválido')
+    .min(1, 'RFC/RUT es requerido')
     .transform((val) => val.toUpperCase()),
   direccion: z.union([
     z.object({
