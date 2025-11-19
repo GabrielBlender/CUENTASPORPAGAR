@@ -38,10 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('📦 Body recibido:', JSON.stringify(body, null, 2));
-    
     const data = empresaSchema.parse(body);
-    console.log('✅ Data validada:', JSON.stringify(data, null, 2));
 
     // Normalizar nombre: usar razon_social si nombre no está presente
     const normalizedData = {
