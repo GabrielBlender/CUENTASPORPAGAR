@@ -2,12 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { deleteFile } from '@/lib/blob-storage';
+import { verifyToken } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Verificar autenticación y permisos
+    const cookieStore = cookies();
+    const token = cookieStore.get('token')?.value;
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const payload = await verifyToken(token);
+    
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'No tienes permisos para eliminar facturas' },
+        { status: 403 }
+      );
+    }
+
     const db = await getDatabase();
     const invoiceId = params.id;
 

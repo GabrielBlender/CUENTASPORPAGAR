@@ -134,6 +134,12 @@ export default function EmpresaDetailPage() {
   };
 
   const handleDeleteInvoice = async (id: string) => {
+    // Verificar que el usuario es admin
+    if (currentUser?.role !== 'admin') {
+      alert('No tienes permisos para eliminar facturas');
+      return;
+    }
+
     if (!confirm('¿Estás seguro de eliminar esta factura?')) return;
     
     try {
@@ -144,10 +150,12 @@ export default function EmpresaDetailPage() {
       if (res.ok) {
         await fetchFacturas(); // Recargar lista
       } else {
-        console.error('Error al eliminar factura');
+        const data = await res.json();
+        alert(data.error || 'Error al eliminar factura');
       }
     } catch (error) {
       console.error('Error al eliminar factura:', error);
+      alert('Error al eliminar factura');
     }
   };
 
@@ -608,14 +616,16 @@ export default function EmpresaDetailPage() {
                               >
                                 <Description fontSize="small" />
                               </IconButton>
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: '#EF4444' }}
-                                onClick={() => handleDeleteInvoice(factura._id)}
-                                title="Eliminar"
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
+                              {currentUser?.role === 'admin' && (
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#EF4444' }}
+                                  onClick={() => handleDeleteInvoice(factura._id)}
+                                  title="Eliminar"
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              )}
                             </Stack>
                           </td>
                         </tr>
