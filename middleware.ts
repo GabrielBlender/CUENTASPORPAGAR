@@ -8,11 +8,11 @@ export async function middleware(request: NextRequest) {
 
   // Rutas públicas - permitir acceso sin token
   if (request.nextUrl.pathname.startsWith('/login')) {
-    // Si ya tiene token válido, redirigir al dashboard
+    // Si ya tiene token válido, redirigir a empresas
     if (token) {
       const user = await verifyToken(token);
       if (user) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+        return NextResponse.redirect(new URL('/empresas', request.url));
       }
     }
     return NextResponse.next();

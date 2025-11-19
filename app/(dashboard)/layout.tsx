@@ -37,10 +37,10 @@ const drawerWidth = 260;
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Empresas', icon: <BusinessIcon />, path: '/empresas' },
-  { text: 'Facturas', icon: <ReceiptIcon />, path: '/facturas' },
-  { text: 'Subir Facturas', icon: <UploadFileIcon />, path: '/facturas/subir' },
-  { text: 'Reportes', icon: <BarChartIcon />, path: '/reportes' },
+  { text: 'Empresas', icon: <BusinessIcon />, path: '/dashboard/empresas' },
+  { text: 'Facturas', icon: <ReceiptIcon />, path: '/dashboard/facturas' },
+  { text: 'Subir Facturas', icon: <UploadFileIcon />, path: '/dashboard/facturas/subir' },
+  { text: 'Reportes', icon: <BarChartIcon />, path: '/dashboard/reportes' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -70,15 +70,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Toolbar sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-        <Typography variant="h6" noWrap component="div" sx={{ color: 'white', fontWeight: 'bold' }}>
-          💰 Cuentas x Pagar
+      <Toolbar sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>
+          Cuentas x Pagar
         </Typography>
       </Toolbar>
       <Divider />
-      <List sx={{ flexGrow: 1, pt: 2 }}>
+      <List sx={{ flexGrow: 1, pt: 2, px: 2 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ px: 1, mb: 0.5 }}>
+          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton
               selected={pathname === item.path}
               onClick={() => {
@@ -97,12 +97,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     color: 'white',
                   },
                 },
+                '&:hover': {
+                  backgroundColor: 'action.hover',
+                },
               }}
             >
-              <ListItemIcon sx={{ color: pathname === item.path ? 'white' : 'inherit' }}>
+              <ListItemIcon sx={{ color: pathname === item.path ? 'white' : 'text.secondary', minWidth: 40 }}>
                 {item.icon}
               </ListItemIcon>
-              <ListItemText primary={item.text} />
+              <ListItemText 
+                primary={item.text}
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: pathname === item.path ? 600 : 500,
+                }}
+              />
             </ListItemButton>
           </ListItem>
         ))}

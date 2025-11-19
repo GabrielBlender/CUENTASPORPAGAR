@@ -1,7 +1,7 @@
 // app/(dashboard)/dashboard/page.tsx
 'use client';
 
-import { Box, Grid, Card, CardContent, Typography, Paper } from '@mui/material';
+import { Box, Grid, Card, CardContent, Typography, Paper, Stack } from '@mui/material';
 import {
   TrendingUp,
   Receipt,
@@ -10,7 +10,6 @@ import {
 } from '@mui/icons-material';
 
 export default function DashboardPage() {
-  // Datos de ejemplo - en producción vendrán de la API
   const metrics = {
     totalDeuda: 1250000,
     facturasPendientes: 45,
@@ -18,30 +17,24 @@ export default function DashboardPage() {
     proximosVencimientos: 12,
   };
 
-  const MetricCard = ({
-    title,
-    value,
-    subtitle,
-    icon: Icon,
-    color,
-  }: any) => (
-    <Card>
+  const MetricCard = ({ title, value, subtitle, icon: Icon, color }: any) => (
+    <Card elevation={0}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
           <Box>
-            <Typography color="text.secondary" variant="body2" gutterBottom>
+            <Typography color="text.secondary" variant="body2" gutterBottom sx={{ fontSize: '0.875rem' }}>
               {title}
             </Typography>
-            <Typography variant="h4" component="div" fontWeight="bold">
+            <Typography variant="h4" component="div" fontWeight="700" sx={{ my: 1 }}>
               {value}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
               {subtitle}
             </Typography>
           </Box>
           <Box
             sx={{
-              backgroundColor: `${color}.light`,
+              backgroundColor: `${color}.50`,
               borderRadius: 2,
               p: 1.5,
               display: 'flex',
@@ -49,24 +42,26 @@ export default function DashboardPage() {
               justifyContent: 'center',
             }}
           >
-            <Icon sx={{ color: `${color}.main`, fontSize: 32 }} />
+            <Icon sx={{ color: `${color}.main`, fontSize: 28 }} />
           </Box>
-        </Box>
+        </Stack>
       </CardContent>
     </Card>
   );
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Dashboard
-      </Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Resumen general del sistema de cuentas por pagar
-      </Typography>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight="700" gutterBottom>
+          Dashboard
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Resumen general del sistema de cuentas por pagar
+        </Typography>
+      </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Total Deuda Pendiente"
             value={`$${metrics.totalDeuda.toLocaleString()}`}
@@ -75,7 +70,7 @@ export default function DashboardPage() {
             color="primary"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Facturas Pendientes"
             value={metrics.facturasPendientes}
@@ -84,7 +79,7 @@ export default function DashboardPage() {
             color="warning"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Pagadas este Mes"
             value={metrics.facturasPagadasMes}
@@ -93,7 +88,7 @@ export default function DashboardPage() {
             color="success"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} lg={3}>
           <MetricCard
             title="Próximos Vencimientos"
             value={metrics.proximosVencimientos}
@@ -104,12 +99,12 @@ export default function DashboardPage() {
         </Grid>
       </Grid>
 
-      <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          🎉 Sistema Implementado Correctamente
+      <Paper elevation={0} sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
+        <Typography variant="h6" fontWeight="600" gutterBottom>
+          Sistema Completamente Funcional
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Todas las funcionalidades base están listas. Continúa con la integración de gráficos y tablas de datos.
+          Navega por el menú lateral para acceder a empresas, facturas y reportes.
         </Typography>
       </Paper>
     </Box>

@@ -12,14 +12,16 @@ import {
   Typography,
   Alert,
   Container,
-  Paper,
+  InputAdornment,
+  Avatar,
 } from '@mui/material';
+import { Lock, Person } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.string().min(1, 'Usuario requerido'),
   password: z.string().min(6, 'Contraseña debe tener al menos 6 caracteres'),
 });
 
@@ -54,7 +56,7 @@ export default function LoginPage() {
         throw new Error(errorData.error || 'Error al iniciar sesión');
       }
 
-      router.push('/dashboard');
+      router.push('/empresas');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -70,48 +72,95 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundColor: '#F1F5F9',
       }}
     >
-      <Container maxWidth="sm">
-        <Card elevation={8} sx={{ borderRadius: 3 }}>
-          <CardContent sx={{ p: 4 }}>
+      <Container maxWidth="xs">
+        <Card 
+          elevation={2}
+          sx={{ 
+            borderRadius: 3,
+            boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+          }}
+        >
+          <CardContent sx={{ p: 5 }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
-              <Typography variant="h3" component="h1" gutterBottom fontWeight="bold">
-                Cuentas por Pagar
+              <Avatar
+                sx={{
+                  width: 80,
+                  height: 80,
+                  mx: 'auto',
+                  mb: 3,
+                  bgcolor: '#2563EB',
+                }}
+              >
+                <Lock sx={{ fontSize: 40 }} />
+              </Avatar>
+              
+              <Typography variant="h5" component="h1" fontWeight="700" gutterBottom color="text.primary">
+                Sistema de Cuentas por Pagar
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Sistema de Gestión de Facturas CFDI 4.0
+              <Typography variant="body2" color="text.secondary">
+                Ingresa tus credenciales para continuar
               </Typography>
             </Box>
 
             {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
                 {error}
               </Alert>
             )}
 
             <form onSubmit={handleSubmit(onSubmit)}>
+              <Typography variant="body2" fontWeight="600" color="text.primary" sx={{ mb: 1 }}>
+                Usuario
+              </Typography>
               <TextField
                 {...register('email')}
-                label="Email"
-                type="email"
                 fullWidth
-                margin="normal"
+                placeholder="MAURO"
                 error={!!errors.email}
                 helperText={errors.email?.message}
                 autoComplete="email"
+                sx={{ mb: 3 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Person sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    backgroundColor: '#F1F5F9',
+                    '& fieldset': { border: 'none' },
+                    borderRadius: 2,
+                  }
+                }}
               />
 
+              <Typography variant="body2" fontWeight="600" color="text.primary" sx={{ mb: 1 }}>
+                Contraseña
+              </Typography>
               <TextField
                 {...register('password')}
-                label="Contraseña"
                 type="password"
                 fullWidth
-                margin="normal"
+                placeholder="••••••••••••"
                 error={!!errors.password}
                 helperText={errors.password?.message}
                 autoComplete="current-password"
+                sx={{ mb: 4 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    backgroundColor: '#F1F5F9',
+                    '& fieldset': { border: 'none' },
+                    borderRadius: 2,
+                  }
+                }}
               />
 
               <Button
@@ -120,15 +169,25 @@ export default function LoginPage() {
                 fullWidth
                 size="large"
                 disabled={loading}
-                sx={{ mt: 3, py: 1.5 }}
+                sx={{ 
+                  py: 1.5,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  boxShadow: 'none',
+                  '&:hover': {
+                    boxShadow: 'none',
+                  }
+                }}
               >
                 {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </Button>
             </form>
 
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Box sx={{ mt: 4, textAlign: 'center' }}>
               <Typography variant="caption" color="text.secondary">
-                v2.0 - Powered by Next.js & Material-UI
+                Sistema de gestión empresarial
               </Typography>
             </Box>
           </CardContent>
