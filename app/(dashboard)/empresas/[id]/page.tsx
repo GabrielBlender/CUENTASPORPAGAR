@@ -19,6 +19,12 @@ import {
   IconButton,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider,
+  Tooltip,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -39,6 +45,14 @@ import {
   GetApp,
   Check,
   Undo,
+  PictureAsPdf,
+  Article,
+  CheckCircleOutline,
+  DeleteOutline,
+  UndoOutlined,
+  CloudUpload,
+  FactCheck,
+  Close,
 } from '@mui/icons-material';
 
 interface TabPanelProps {
@@ -68,6 +82,10 @@ export default function EmpresaDetailPage() {
   const [facturasPagadas, setFacturasPagadas] = useState<any[]>([]);
   const [todasFacturas, setTodasFacturas] = useState<any[]>([]);
   const [loadingFacturas, setLoadingFacturas] = useState(false);
+  
+  // Modal de éxito
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [uploadedInvoice, setUploadedInvoice] = useState<any>(null);
   
   // Filtros para el resumen
   const [filtroProveedor, setFiltroProveedor] = useState('');
@@ -292,13 +310,21 @@ export default function EmpresaDetailPage() {
       });
 
       if (res.ok) {
+        const data = await res.json();
         setSelectedFile(null);
+        
+        // Obtener la factura recién creada
+        const facturaRes = await fetch(`/api/invoices/${data.data.id}`);
+        if (facturaRes.ok) {
+          const facturaData = await facturaRes.json();
+          setUploadedInvoice(facturaData.data);
+          setShowSuccessModal(true);
+        }
+        
         await fetchFacturas();
-        setTabValue(1); // Cambiar a la pestaña de "Todas las Facturas"
-        alert('Factura procesada exitosamente. Ahora puedes agregar el PDF desde la tabla.');
       } else {
         const error = await res.json();
-        alert(error.error || 'Error al subir factura');
+        alert(error.message || error.error || 'Error al subir factura');
       }
     } catch (error) {
       console.error('Error uploading:', error);
@@ -550,58 +576,81 @@ export default function EmpresaDetailPage() {
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={1} justifyContent="center">
                               {factura.archivo_xml && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#10B981' }}
-                                  onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
-                                  title="Descargar XML"
-                                >
-                                  <Description fontSize="small" />
-                                </IconButton>
+                                <Tooltip title="Descargar archivo XML" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#10B981',
+                                      '&:hover': { bgcolor: '#F0FDF4' }
+                                    }}
+                                    onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
+                                  >
+                                    <Article fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                               {factura.archivo_pdf && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#3B82F6' }}
-                                  onClick={() => handleViewPDF(factura.archivo_pdf)}
-                                  title="Ver PDF"
-                                >
-                                  <Visibility fontSize="small" />
-                                </IconButton>
+                                <Tooltip title="Ver archivo PDF" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#EF4444',
+                                      '&:hover': { bgcolor: '#FEF2F2' }
+                                    }}
+                                    onClick={() => handleViewPDF(factura.archivo_pdf)}
+                                  >
+                                    <PictureAsPdf fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                             </Stack>
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={0.5} justifyContent="center">
                               {factura.estado_pago !== 'pagado' && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#10B981' }}
-                                  onClick={() => handleMarkAsPaid(factura._id)}
-                                  title="Marcar como pagada"
-                                >
-                                  <Check fontSize="small" />
-                                </IconButton>
+                                <Tooltip title="Marcar como pagada" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#10B981',
+                                      '&:hover': { bgcolor: '#F0FDF4', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleMarkAsPaid(factura._id)}
+                                  >
+                                    <CheckCircleOutline fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                               {factura.estado_pago === 'pagado' && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#F59E0B' }}
-                                  onClick={() => handleMarkAsPending(factura._id)}
-                                  title="Marcar como pendiente"
-                                >
-                                  <Undo fontSize="small" />
-                                </IconButton>
+                                <Tooltip title="Marcar como pendiente" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#F59E0B',
+                                      '&:hover': { bgcolor: '#FEF3C7', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleMarkAsPending(factura._id)}
+                                  >
+                                    <UndoOutlined fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                               {currentUser?.role === 'admin' && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#EF4444' }}
-                                  onClick={() => handleDeleteInvoice(factura._id)}
-                                  title="Eliminar"
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
+                                <Tooltip title="Eliminar factura" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#EF4444',
+                                      '&:hover': { bgcolor: '#FEE2E2', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleDeleteInvoice(factura._id)}
+                                  >
+                                    <DeleteOutline fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                             </Stack>
                           </td>
@@ -1410,6 +1459,139 @@ export default function EmpresaDetailPage() {
           </Card>
         </TabPanel>
       </Box>
+
+      {/* Modal de Éxito */}
+      <Dialog 
+        open={showSuccessModal} 
+        onClose={() => {
+          setShowSuccessModal(false);
+          setTabValue(1);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#F0FDF4', color: '#065F46', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <CheckCircleOutline sx={{ fontSize: 40, color: '#10B981' }} />
+          <Box>
+            <Typography variant="h6" fontWeight="700">
+              ¡Factura Cargada Exitosamente!
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              La factura ha sido procesada y guardada en el sistema
+            </Typography>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ mt: 2 }}>
+          {uploadedInvoice && (
+            <Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Card elevation={0} sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                    <CardContent>
+                      <Stack spacing={2}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Número de Factura
+                          </Typography>
+                          <Typography variant="body1" fontWeight="600">
+                            {uploadedInvoice.numero_factura || 'N/A'}
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Proveedor
+                          </Typography>
+                          <Typography variant="body2" fontWeight="600" textAlign="right">
+                            {uploadedInvoice.cfdi?.emisor?.nombre || 'N/A'}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            RFC
+                          </Typography>
+                          <Typography variant="body2" fontWeight="500">
+                            {uploadedInvoice.cfdi?.emisor?.rfc || 'N/A'}
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Fecha
+                          </Typography>
+                          <Typography variant="body2">
+                            {uploadedInvoice.cfdi?.fecha ? new Date(uploadedInvoice.cfdi.fecha).toLocaleDateString('es-MX') : 'N/A'}
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Monto Total
+                          </Typography>
+                          <Typography variant="h6" fontWeight="700" color="primary.main">
+                            $ {Number(uploadedInvoice.cfdi?.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            UUID
+                          </Typography>
+                          <Typography variant="caption" fontFamily="monospace" sx={{ bgcolor: '#E2E8F0', px: 1, py: 0.5, borderRadius: 1 }}>
+                            {uploadedInvoice.cfdi?.timbreFiscalDigital?.uuid || 'N/A'}
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Estado
+                          </Typography>
+                          <Chip 
+                            label={uploadedInvoice.estado_pago === 'pendiente' ? 'Pendiente' : 'Vencida'}
+                            size="small"
+                            sx={{
+                              bgcolor: uploadedInvoice.estado_pago === 'vencido' ? '#FEE2E2' : '#FEF3C7',
+                              color: uploadedInvoice.estado_pago === 'vencido' ? '#DC2626' : '#D97706',
+                              fontWeight: 600,
+                            }}
+                          />
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Box sx={{ bgcolor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 2, p: 2 }}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <PictureAsPdf sx={{ color: '#2563EB' }} />
+                      <Typography variant="body2" color="#1E40AF">
+                        <strong>Próximo paso:</strong> Puedes agregar el archivo PDF de esta factura desde la tabla de facturas.
+                      </Typography>
+                    </Stack>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button 
+            onClick={() => {
+              setShowSuccessModal(false);
+              setTabValue(1);
+            }}
+            variant="contained"
+            fullWidth
+            size="large"
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            Ver en Tabla de Facturas
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
