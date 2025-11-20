@@ -15,6 +15,14 @@ export async function GET(request: NextRequest) {
     // Obtener todas las empresas
     const empresas = await db.collection('empresas').find({}).toArray();
     const empresasActivas = empresas.filter(e => e.activo !== false).length;
+    
+    // Convertir empresas a formato simple para el frontend
+    const listaEmpresas = empresas.map(e => ({
+      _id: e._id.toString(),
+      nombre: e.nombre,
+      rfc: e.rfc,
+      activo: e.activo !== false,
+    }));
 
     // Obtener todas las facturas
     const todasFacturas = await db.collection('invoices').find({}).toArray();
@@ -69,11 +77,55 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Top 5 proveedores por deuda
-    const topProveedores = Array.from(proveedoresMap.values())
-      .filter(p => p.totalDeuda > 0)
-      .sort((a, b) => b.totalDeuda - a.totalDeuda)
-      .slice(0, 5);
+    // Lista de proveedores únicos
+    const listaProveedores = Array.from(proveedoresMap.values())
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    // Calcular deuda por empresa
+    const deudaPorEmpresaMap = new Map();
+    const pagadoPorEmpresaMap = new Map();
+
+    todasFacturas.forEach(factura => {
+      const empresaId = factura.empresa_id?.toString();
+      if (!empresaId) return;
+
+      const empresa = empresas.find(e => e._id.toString() === empresaId);
+      if (!empresa) return;
+
+      const monto = Number(factura.cfdi?.total || 0);
+
+      // Deuda pendiente
+      if (factura.estado_pago === 'pendiente' || factura.estado_pago === 'vencido') {
+        if (!deudaPorEmpresaMap.has(empresaId)) {
+          deudaPorEmpresaMap.set(empresaId, {
+            empresa: empresa.nombre,
+            empresaId: empresaId,
+            monto: 0,
+          });
+        }
+        const item = deudaPorEmpresaMap.get(empresaId);
+        item.monto += monto;
+      }
+
+      // Pagado
+      if (factura.estado_pago === 'pagado') {
+        if (!pagadoPorEmpresaMap.has(empresaId)) {
+          pagadoPorEmpresaMap.set(empresaId, {
+            empresa: empresa.nombre,
+            empresaId: empresaId,
+            monto: 0,
+          });
+        }
+        const item = pagadoPorEmpresaMap.get(empresaId);
+        item.monto += monto;
+      }
+    });
+
+    const deudaPorEmpresa = Array.from(deudaPorEmpresaMap.values())
+      .sort((a, b) => b.monto - a.monto);
+    
+    const pagadoPorEmpresa = Array.from(pagadoPorEmpresaMap.values())
+      .sort((a, b) => b.monto - a.monto);
 
     // Calcular tendencias del mes
     const ahora = new Date();
@@ -102,6 +154,7 @@ export async function GET(request: NextRequest) {
       empresas: {
         total: empresas.length,
         activas: empresasActivas,
+        lista: listaEmpresas,
       },
       facturas: {
         total: todasFacturas.length,
@@ -118,7 +171,7 @@ export async function GET(request: NextRequest) {
       proveedores: {
         total: proveedoresMap.size,
         conDeuda: proveedoresConDeuda.size,
-        topProveedores,
+        lista: listaProveedores,
       },
       tendencias: {
         facturasEsteMes: facturasEsteMes.length,
@@ -126,6 +179,8 @@ export async function GET(request: NextRequest) {
         montoEsteMes,
         montoMesAnterior,
       },
+      deudaPorEmpresa,
+      pagadoPorEmpresa,
     };
 
     return NextResponse.json({
