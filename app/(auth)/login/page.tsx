@@ -56,7 +56,7 @@ export default function LoginPage() {
         throw new Error(errorData.error || 'Error al iniciar sesión');
       }
 
-      router.push('/empresas');
+      router.push('/dashboard');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
