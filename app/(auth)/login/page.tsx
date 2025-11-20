@@ -12,10 +12,9 @@ import {
   Typography,
   Alert,
   Container,
-  InputAdornment,
   Avatar,
 } from '@mui/material';
-import { Lock, Person } from '@mui/icons-material';
+import { Lock } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -31,6 +30,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
 
   const {
     register,
@@ -65,6 +65,21 @@ export default function LoginPage() {
     }
   };
 
+  // Obtener la primera letra del email para el avatar
+  const getAvatarContent = () => {
+    if (emailValue && emailValue.length > 0) {
+      return emailValue.charAt(0).toUpperCase();
+    }
+    return <Lock sx={{ fontSize: 40 }} />;
+  };
+
+  const getAvatarColor = () => {
+    if (emailValue && emailValue.length > 0) {
+      return '#10B981'; // Verde cuando hay texto
+    }
+    return '#2563EB'; // Azul por defecto
+  };
+
   return (
     <Box
       sx={{
@@ -91,10 +106,13 @@ export default function LoginPage() {
                   height: 80,
                   mx: 'auto',
                   mb: 3,
-                  bgcolor: '#2563EB',
+                  bgcolor: getAvatarColor(),
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  transition: 'all 0.3s ease',
                 }}
               >
-                <Lock sx={{ fontSize: 40 }} />
+                {getAvatarContent()}
               </Avatar>
               
               <Typography variant="h5" component="h1" fontWeight="700" gutterBottom color="text.primary">
@@ -112,52 +130,70 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)}>
-              <Typography variant="body2" fontWeight="600" color="text.primary" sx={{ mb: 1 }}>
-                Usuario
-              </Typography>
               <TextField
-                {...register('email')}
+                {...register('email', {
+                  onChange: (e) => setEmailValue(e.target.value)
+                })}
+                label="Usuario"
                 fullWidth
-                placeholder="MAURO"
                 error={!!errors.email}
                 helperText={errors.email?.message}
                 autoComplete="email"
                 sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Person sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  ),
+                variant="outlined"
+                InputLabelProps={{
                   sx: {
-                    backgroundColor: '#F1F5F9',
-                    '& fieldset': { border: 'none' },
+                    '&.Mui-focused': {
+                      color: '#2563EB',
+                    },
+                  },
+                }}
+                InputProps={{
+                  sx: {
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                      borderWidth: 2,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#2563EB',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#2563EB',
+                    },
                     borderRadius: 2,
                   }
                 }}
               />
 
-              <Typography variant="body2" fontWeight="600" color="text.primary" sx={{ mb: 1 }}>
-                Contraseña
-              </Typography>
               <TextField
                 {...register('password')}
+                label="Contraseña"
                 type="password"
                 fullWidth
-                placeholder="••••••••••••"
                 error={!!errors.password}
                 helperText={errors.password?.message}
                 autoComplete="current-password"
                 sx={{ mb: 4 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  ),
+                variant="outlined"
+                InputLabelProps={{
                   sx: {
-                    backgroundColor: '#F1F5F9',
-                    '& fieldset': { border: 'none' },
+                    '&.Mui-focused': {
+                      color: '#2563EB',
+                    },
+                  },
+                }}
+                InputProps={{
+                  sx: {
+                    '& fieldset': {
+                      borderColor: '#E2E8F0',
+                      borderWidth: 2,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#2563EB',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#2563EB',
+                    },
                     borderRadius: 2,
                   }
                 }}
