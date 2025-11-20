@@ -12,7 +12,7 @@ export async function DELETE(
   try {
     // Verificar autenticación y permisos
     const cookieStore = cookies();
-    const token = cookieStore.get('token')?.value;
+    const token = cookieStore.get('auth-token')?.value;
     
     if (!token) {
       return NextResponse.json(
@@ -121,7 +121,7 @@ export async function PUT(
   try {
     // Verificar autenticación
     const cookieStore = cookies();
-    const token = cookieStore.get('token')?.value;
+    const token = cookieStore.get('auth-token')?.value;
     
     if (!token) {
       return NextResponse.json(
@@ -146,11 +146,13 @@ export async function PUT(
 
     // Construir el objeto de actualización
     const updateData: any = {
-      updated_at: new Date(),
+      $set: {
+        updated_at: new Date(),
+      }
     };
 
     if (estado_pago) {
-      updateData.estado_pago = estado_pago;
+      updateData.$set.estado_pago = estado_pago;
       // Agregar a la actividad
       updateData.$push = {
         actividad: {
@@ -163,12 +165,12 @@ export async function PUT(
     }
 
     if (notas !== undefined) {
-      updateData.notas = notas;
+      updateData.$set.notas = notas;
     }
 
     const result = await db.collection('invoices').findOneAndUpdate(
       { _id: new ObjectId(invoiceId) },
-      { $set: updateData, ...(updateData.$push && { $push: updateData.$push }) },
+      updateData,
       { returnDocument: 'after' }
     );
 

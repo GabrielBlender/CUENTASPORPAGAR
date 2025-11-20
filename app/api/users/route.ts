@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       password: hashedPassword,
       nombre,
       role: role || 'user',
+      activo: true,
       created_at: new Date(),
       updated_at: new Date(),
     };

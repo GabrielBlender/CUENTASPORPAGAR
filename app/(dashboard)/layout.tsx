@@ -60,7 +60,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    try {
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
     router.push('/login');
   };
 

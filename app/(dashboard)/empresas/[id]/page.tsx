@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   Box,
@@ -25,6 +26,11 @@ import {
   DialogActions,
   Divider,
   Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  TablePagination,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -53,6 +59,7 @@ import {
   CloudUpload,
   FactCheck,
   Close,
+  Cancel,
 } from '@mui/icons-material';
 
 interface TabPanelProps {
@@ -87,10 +94,60 @@ export default function EmpresaDetailPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [uploadedInvoice, setUploadedInvoice] = useState<any>(null);
   
+  // Modales de confirmación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showMarkPaidModal, setShowMarkPaidModal] = useState(false);
+  const [showMarkPendingModal, setShowMarkPendingModal] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceData, setSelectedInvoiceData] = useState<any>(null);
+  
   // Filtros para el resumen
-  const [filtroProveedor, setFiltroProveedor] = useState('');
+  const [filtroProveedor, setFiltroProveedor] = useState('todos');
   const [filtroFechaInicio, setFiltroFechaInicio] = useState('');
   const [filtroFechaFin, setFiltroFechaFin] = useState('');
+  
+  // Filtros para Pendientes
+  const [filtroProveedorPendientes, setFiltroProveedorPendientes] = useState('todos');
+  const [paginaPendientes, setPaginaPendientes] = useState(0);
+  const registrosPorPaginaPendientes = 2;
+  
+  // Filtros para Pagadas
+  const [filtroProveedorPagadas, setFiltroProveedorPagadas] = useState('todos');
+  const [paginaPagadas, setPaginaPagadas] = useState(0);
+  const registrosPorPaginaPagadas = 2;
+  
+  // Lista de proveedores únicos para todas las facturas
+  const proveedoresUnicos = React.useMemo(() => {
+    const proveedores = todasFacturas.map(f => ({
+      rfc: f.cfdi?.emisor?.rfc || '',
+      nombre: f.cfdi?.emisor?.nombre || 'Sin nombre'
+    })).filter(p => p.rfc);
+    
+    const unique = Array.from(new Map(proveedores.map(p => [p.rfc, p])).values());
+    return unique.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [todasFacturas]);
+
+  // Lista de proveedores únicos para facturas pendientes
+  const proveedoresUnicosPendientes = React.useMemo(() => {
+    const proveedores = facturas.map(f => ({
+      rfc: f.cfdi?.emisor?.rfc || '',
+      nombre: f.cfdi?.emisor?.nombre || 'Sin nombre'
+    })).filter(p => p.rfc);
+    
+    const unique = Array.from(new Map(proveedores.map(p => [p.rfc, p])).values());
+    return unique.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [facturas]);
+
+  // Lista de proveedores únicos para facturas pagadas
+  const proveedoresUnicosPagadas = React.useMemo(() => {
+    const proveedores = facturasPagadas.map(f => ({
+      rfc: f.cfdi?.emisor?.rfc || '',
+      nombre: f.cfdi?.emisor?.nombre || 'Sin nombre'
+    })).filter(p => p.rfc);
+    
+    const unique = Array.from(new Map(proveedores.map(p => [p.rfc, p])).values());
+    return unique.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [facturasPagadas]);
 
   // Obtener el ID de los parámetros
   const empresaId = params?.id as string;
@@ -170,22 +227,38 @@ export default function EmpresaDetailPage() {
     window.open(url, '_blank');
   };
 
-  const handleDeleteInvoice = async (id: string) => {
+  const handleDeleteInvoice = (id: string, facturaData?: any) => {
     // Verificar que el usuario es admin
     if (currentUser?.role !== 'admin') {
       alert('No tienes permisos para eliminar facturas');
       return;
     }
 
-    if (!confirm('¿Estás seguro de eliminar esta factura?')) return;
+    setSelectedInvoiceId(id);
+    setSelectedInvoiceData(facturaData);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedInvoiceId) return;
     
     try {
-      const res = await fetch(`/api/invoices/${id}`, {
-        method: 'DELETE'
+      const res = await fetch(`/api/invoices/${selectedInvoiceId}`, {
+        method: 'DELETE',
+        credentials: 'include'
       });
       
+      if (res.status === 401) {
+        alert('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+        router.push('/login');
+        return;
+      }
+      
       if (res.ok) {
-        await fetchFacturas(); // Recargar lista
+        await fetchFacturas();
+        setShowDeleteModal(false);
+        setSelectedInvoiceId(null);
+        setSelectedInvoiceData(null);
       } else {
         const data = await res.json();
         alert(data.error || 'Error al eliminar factura');
@@ -196,19 +269,34 @@ export default function EmpresaDetailPage() {
     }
   };
 
-  const handleMarkAsPaid = async (id: string) => {
-    if (!confirm('¿Marcar esta factura como pagada?')) return;
+  const handleMarkAsPaid = (id: string, facturaData?: any) => {
+    setSelectedInvoiceId(id);
+    setSelectedInvoiceData(facturaData);
+    setShowMarkPaidModal(true);
+  };
+
+  const confirmMarkAsPaid = async () => {
+    if (!selectedInvoiceId) return;
     
     try {
-      const res = await fetch(`/api/invoices/${id}`, {
+      const res = await fetch(`/api/invoices/${selectedInvoiceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ estado_pago: 'pagado' }),
       });
       
+      if (res.status === 401) {
+        alert('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+        router.push('/login');
+        return;
+      }
+      
       if (res.ok) {
-        await fetchFacturas(); // Recargar lista
-        alert('Factura marcada como pagada');
+        await fetchFacturas();
+        setShowMarkPaidModal(false);
+        setSelectedInvoiceId(null);
+        setSelectedInvoiceData(null);
       } else {
         const data = await res.json();
         alert(data.error || 'Error al actualizar factura');
@@ -219,19 +307,34 @@ export default function EmpresaDetailPage() {
     }
   };
 
-  const handleMarkAsPending = async (id: string) => {
-    if (!confirm('¿Marcar esta factura como pendiente?')) return;
+  const handleMarkAsPending = (id: string, facturaData?: any) => {
+    setSelectedInvoiceId(id);
+    setSelectedInvoiceData(facturaData);
+    setShowMarkPendingModal(true);
+  };
+
+  const confirmMarkAsPending = async () => {
+    if (!selectedInvoiceId) return;
     
     try {
-      const res = await fetch(`/api/invoices/${id}`, {
+      const res = await fetch(`/api/invoices/${selectedInvoiceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ estado_pago: 'pendiente' }),
       });
       
+      if (res.status === 401) {
+        alert('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+        router.push('/login');
+        return;
+      }
+      
       if (res.ok) {
-        await fetchFacturas(); // Recargar lista
-        alert('Factura marcada como pendiente');
+        await fetchFacturas();
+        setShowMarkPendingModal(false);
+        setSelectedInvoiceId(null);
+        setSelectedInvoiceData(null);
       } else {
         const data = await res.json();
         alert(data.error || 'Error al actualizar factura');
@@ -331,6 +434,47 @@ export default function EmpresaDetailPage() {
       alert('Error al subir factura');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUploadPDFToInvoice = async (e: React.ChangeEvent<HTMLInputElement>, facturaId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar que sea PDF
+    if (!file.type.includes('pdf')) {
+      alert('Por favor selecciona un archivo PDF válido');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+
+      const res = await fetch(`/api/invoices/${facturaId}/upload-pdf`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (res.status === 401) {
+        alert('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+        router.push('/login');
+        return;
+      }
+
+      if (res.ok) {
+        alert('PDF cargado exitosamente');
+        await fetchFacturas();
+        // Limpiar el input
+        e.target.value = '';
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Error al cargar PDF');
+      }
+    } catch (error) {
+      console.error('Error al cargar PDF:', error);
+      alert('Error al cargar PDF');
     }
   };
 
@@ -513,6 +657,9 @@ export default function EmpresaDetailPage() {
                           Proveedor
                         </th>
                         <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          RFC
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
                           Fecha
                         </th>
                         <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
@@ -520,6 +667,9 @@ export default function EmpresaDetailPage() {
                         </th>
                         <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
                           Estado
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          PDF
                         </th>
                         <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
                           Archivos
@@ -547,8 +697,10 @@ export default function EmpresaDetailPage() {
                             <Typography variant="body2">
                               {factura.cfdi?.emisor?.nombre || 'Sin proveedor'}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              RFC: {factura.cfdi?.emisor?.rfc || 'N/A'}
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {factura.cfdi?.emisor?.rfc || 'N/A'}
                             </Typography>
                           </td>
                           <td style={{ padding: '16px' }}>
@@ -574,6 +726,13 @@ export default function EmpresaDetailPage() {
                             />
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
+                            {factura.archivo_pdf ? (
+                              <CheckCircle sx={{ color: '#10B981', fontSize: '1.5rem' }} />
+                            ) : (
+                              <Cancel sx={{ color: '#EF4444', fontSize: '1.5rem' }} />
+                            )}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={1} justifyContent="center">
                               {factura.archivo_xml && (
                                 <Tooltip title="Descargar archivo XML" arrow>
@@ -581,7 +740,8 @@ export default function EmpresaDetailPage() {
                                     size="small" 
                                     sx={{ 
                                       color: '#10B981',
-                                      '&:hover': { bgcolor: '#F0FDF4' }
+                                      '&:hover': { bgcolor: '#D1FAE5', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
                                     }}
                                     onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
                                   >
@@ -589,17 +749,38 @@ export default function EmpresaDetailPage() {
                                   </IconButton>
                                 </Tooltip>
                               )}
-                              {factura.archivo_pdf && (
+                              {factura.archivo_pdf ? (
                                 <Tooltip title="Ver archivo PDF" arrow>
                                   <IconButton 
                                     size="small" 
                                     sx={{ 
-                                      color: '#EF4444',
-                                      '&:hover': { bgcolor: '#FEF2F2' }
+                                      color: '#DC2626',
+                                      '&:hover': { bgcolor: '#FEE2E2', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
                                     }}
                                     onClick={() => handleViewPDF(factura.archivo_pdf)}
                                   >
                                     <PictureAsPdf fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Cargar PDF" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#F59E0B',
+                                      '&:hover': { bgcolor: '#FEF3C7', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    component="label"
+                                  >
+                                    <CloudUpload fontSize="small" />
+                                    <input
+                                      type="file"
+                                      hidden
+                                      accept="application/pdf"
+                                      onChange={(e) => handleUploadPDFToInvoice(e, factura._id)}
+                                    />
                                   </IconButton>
                                 </Tooltip>
                               )}
@@ -613,10 +794,10 @@ export default function EmpresaDetailPage() {
                                     size="small" 
                                     sx={{ 
                                       color: '#10B981',
-                                      '&:hover': { bgcolor: '#F0FDF4', transform: 'scale(1.1)' },
+                                      '&:hover': { bgcolor: '#D1FAE5', transform: 'scale(1.1)' },
                                       transition: 'all 0.2s'
                                     }}
-                                    onClick={() => handleMarkAsPaid(factura._id)}
+                                    onClick={() => handleMarkAsPaid(factura._id, factura)}
                                   >
                                     <CheckCircleOutline fontSize="small" />
                                   </IconButton>
@@ -631,7 +812,7 @@ export default function EmpresaDetailPage() {
                                       '&:hover': { bgcolor: '#FEF3C7', transform: 'scale(1.1)' },
                                       transition: 'all 0.2s'
                                     }}
-                                    onClick={() => handleMarkAsPending(factura._id)}
+                                    onClick={() => handleMarkAsPending(factura._id, factura)}
                                   >
                                     <UndoOutlined fontSize="small" />
                                   </IconButton>
@@ -646,7 +827,7 @@ export default function EmpresaDetailPage() {
                                       '&:hover': { bgcolor: '#FEE2E2', transform: 'scale(1.1)' },
                                       transition: 'all 0.2s'
                                     }}
-                                    onClick={() => handleDeleteInvoice(factura._id)}
+                                    onClick={() => handleDeleteInvoice(factura._id, factura)}
                                   >
                                     <DeleteOutline fontSize="small" />
                                   </IconButton>
@@ -735,45 +916,86 @@ export default function EmpresaDetailPage() {
                 </Button>
               </Box>
 
+              {/* Filtro por Proveedor */}
+              <Box sx={{ mb: 3 }}>
+                <FormControl size="small" sx={{ minWidth: 300 }}>
+                  <InputLabel>Filtrar por Proveedor</InputLabel>
+                  <Select
+                    value={filtroProveedorPendientes}
+                    label="Filtrar por Proveedor"
+                    onChange={(e) => {
+                      setFiltroProveedorPendientes(e.target.value);
+                      setPaginaPendientes(0);
+                    }}
+                  >
+                    <MenuItem value="todos">Todos los proveedores</MenuItem>
+                    {proveedoresUnicosPendientes.map((proveedor) => (
+                      <MenuItem key={proveedor.rfc} value={proveedor.rfc}>
+                        {proveedor.nombre} ({proveedor.rfc})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
               {loadingFacturas ? (
                 <Typography>Cargando...</Typography>
-              ) : facturas.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <CheckCircle sx={{ fontSize: 64, color: '#10B981', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary">
-                    ¡No hay facturas pendientes! Todo al día.
-                  </Typography>
-                </Box>
-              ) : (
-                <Box sx={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Nº Factura
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Proveedor
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Fecha
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Monto
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Estado
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Archivos
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {facturas.map((factura, index) => (
+              ) : (() => {
+                // Aplicar filtro
+                const facturasFiltradas = filtroProveedorPendientes === 'todos' 
+                  ? facturas 
+                  : facturas.filter(f => f.cfdi?.emisor?.rfc === filtroProveedorPendientes);
+                
+                // Aplicar paginación
+                const inicio = paginaPendientes * registrosPorPaginaPendientes;
+                const facturasPaginadas = facturasFiltradas.slice(inicio, inicio + registrosPorPaginaPendientes);
+                
+                return facturasFiltradas.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <CheckCircle sx={{ fontSize: 64, color: '#10B981', mb: 2 }} />
+                    <Typography variant="body1" color="text.secondary">
+                      {filtroProveedorPendientes === 'todos' 
+                        ? '¡No hay facturas pendientes! Todo al día.'
+                        : 'No hay facturas pendientes de este proveedor.'}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <Box sx={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Nº Factura
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Proveedor
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              RFC
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Fecha
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Monto
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Estado
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              PDF
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Archivos
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Acciones
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facturasPaginadas.map((factura, index) => (
                         <tr 
                           key={factura._id || index}
                           style={{ 
@@ -790,8 +1012,10 @@ export default function EmpresaDetailPage() {
                             <Typography variant="body2">
                               {factura.cfdi?.emisor?.nombre || 'Sin proveedor'}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              RFC: {factura.cfdi?.emisor?.rfc || 'N/A'}
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {factura.cfdi?.emisor?.rfc || 'N/A'}
                             </Typography>
                           </td>
                           <td style={{ padding: '16px' }}>
@@ -817,48 +1041,110 @@ export default function EmpresaDetailPage() {
                             />
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
+                            {factura.archivo_pdf ? (
+                              <CheckCircle sx={{ color: '#10B981', fontSize: '1.5rem' }} />
+                            ) : (
+                              <Cancel sx={{ color: '#EF4444', fontSize: '1.5rem' }} />
+                            )}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={1} justifyContent="center">
                               {factura.archivo_xml && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#10B981' }}
-                                  onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
-                                  title="Descargar XML"
-                                >
-                                  <Description fontSize="small" />
-                                </IconButton>
+                                <Tooltip title="Descargar XML" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#10B981',
+                                      '&:hover': { 
+                                        bgcolor: '#D1FAE5',
+                                        transform: 'scale(1.1)',
+                                      },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
+                                  >
+                                    <Article fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
-                              {factura.archivo_pdf && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#3B82F6' }}
-                                  onClick={() => handleViewPDF(factura.archivo_pdf)}
-                                  title="Ver PDF"
-                                >
-                                  <Visibility fontSize="small" />
-                                </IconButton>
+                              {factura.archivo_pdf ? (
+                                <Tooltip title="Ver PDF" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#DC2626',
+                                      '&:hover': { 
+                                        bgcolor: '#FEE2E2',
+                                        transform: 'scale(1.1)',
+                                      },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleViewPDF(factura.archivo_pdf)}
+                                  >
+                                    <PictureAsPdf fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Cargar PDF" arrow>
+                                  <IconButton 
+                                    component="label"
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#F97316',
+                                      '&:hover': { 
+                                        bgcolor: '#FFEDD5',
+                                        transform: 'scale(1.1)',
+                                      },
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    <CloudUpload fontSize="small" />
+                                    <input
+                                      type="file"
+                                      hidden
+                                      accept="application/pdf"
+                                      onChange={(e) => handleUploadPDFToInvoice(e, factura._id)}
+                                    />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                             </Stack>
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={0.5} justifyContent="center">
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: '#10B981' }}
-                                onClick={() => handleMarkAsPaid(factura._id)}
-                                title="Marcar como pagada"
-                              >
-                                <Check fontSize="small" />
-                              </IconButton>
-                              {currentUser?.role === 'admin' && (
+                              <Tooltip title="Marcar como pagada" arrow>
                                 <IconButton 
                                   size="small" 
-                                  sx={{ color: '#EF4444' }}
-                                  onClick={() => handleDeleteInvoice(factura._id)}
-                                  title="Eliminar"
+                                  sx={{ 
+                                    color: '#10B981',
+                                    '&:hover': { 
+                                      bgcolor: '#D1FAE5',
+                                      transform: 'scale(1.1)',
+                                    },
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onClick={() => handleMarkAsPaid(factura._id, factura)}
                                 >
-                                  <Delete fontSize="small" />
+                                  <CheckCircleOutline fontSize="small" />
                                 </IconButton>
+                              </Tooltip>
+                              {currentUser?.role === 'admin' && (
+                                <Tooltip title="Eliminar" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#EF4444',
+                                      '&:hover': { 
+                                        bgcolor: '#FEE2E2',
+                                        transform: 'scale(1.1)',
+                                      },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleDeleteInvoice(factura._id, factura)}
+                                  >
+                                    <DeleteOutline fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                             </Stack>
                           </td>
@@ -867,7 +1153,22 @@ export default function EmpresaDetailPage() {
                     </tbody>
                   </table>
                 </Box>
-              )}
+                
+                {/* Paginación */}
+                <TablePagination
+                  component="div"
+                  count={facturasFiltradas.length}
+                  page={paginaPendientes}
+                  onPageChange={(_, newPage) => setPaginaPendientes(newPage)}
+                  rowsPerPage={registrosPorPaginaPendientes}
+                  rowsPerPageOptions={[registrosPorPaginaPendientes]}
+                  labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                  labelRowsPerPage="Registros por página:"
+                  sx={{ borderTop: '1px solid #E2E8F0', mt: 2 }}
+                />
+              </>
+            );
+          })()}
             </CardContent>
           </Card>
         </TabPanel>
@@ -943,42 +1244,83 @@ export default function EmpresaDetailPage() {
                 </Button>
               </Box>
 
+              {/* Filtro por Proveedor */}
+              <Box sx={{ mb: 3 }}>
+                <FormControl size="small" sx={{ minWidth: 300 }}>
+                  <InputLabel>Filtrar por Proveedor</InputLabel>
+                  <Select
+                    value={filtroProveedorPagadas}
+                    label="Filtrar por Proveedor"
+                    onChange={(e) => {
+                      setFiltroProveedorPagadas(e.target.value);
+                      setPaginaPagadas(0);
+                    }}
+                  >
+                    <MenuItem value="todos">Todos los proveedores</MenuItem>
+                    {proveedoresUnicosPagadas.map((proveedor) => (
+                      <MenuItem key={proveedor.rfc} value={proveedor.rfc}>
+                        {proveedor.nombre} ({proveedor.rfc})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
               {loadingFacturas ? (
                 <Typography>Cargando...</Typography>
-              ) : facturasPagadas.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <CheckCircle sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary">
-                    No hay facturas pagadas aún
-                  </Typography>
-                </Box>
-              ) : (
-                <Box sx={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Nº Factura
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Proveedor
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Fecha
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Monto
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Archivos
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {facturasPagadas.map((factura, index) => (
+              ) : (() => {
+                // Aplicar filtro
+                const facturasFiltradas = filtroProveedorPagadas === 'todos' 
+                  ? facturasPagadas 
+                  : facturasPagadas.filter(f => f.cfdi?.emisor?.rfc === filtroProveedorPagadas);
+                
+                // Aplicar paginación
+                const inicio = paginaPagadas * registrosPorPaginaPagadas;
+                const facturasPaginadas = facturasFiltradas.slice(inicio, inicio + registrosPorPaginaPagadas);
+                
+                return facturasFiltradas.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <CheckCircle sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
+                    <Typography variant="body1" color="text.secondary">
+                      {filtroProveedorPagadas === 'todos' 
+                        ? 'No hay facturas pagadas aún'
+                        : 'No hay facturas pagadas de este proveedor.'}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <Box sx={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Nº Factura
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Proveedor
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              RFC
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Fecha
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Monto
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              PDF
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Archivos
+                            </th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                              Acciones
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facturasPaginadas.map((factura, index) => (
                         <tr 
                           key={factura._id || index}
                           style={{ 
@@ -995,8 +1337,10 @@ export default function EmpresaDetailPage() {
                             <Typography variant="body2">
                               {factura.cfdi?.emisor?.nombre || 'Sin proveedor'}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              RFC: {factura.cfdi?.emisor?.rfc || 'N/A'}
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {factura.cfdi?.emisor?.rfc || 'N/A'}
                             </Typography>
                           </td>
                           <td style={{ padding: '16px' }}>
@@ -1010,39 +1354,81 @@ export default function EmpresaDetailPage() {
                             </Typography>
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
+                            {factura.archivo_pdf ? (
+                              <CheckCircle sx={{ color: '#10B981', fontSize: '1.5rem' }} />
+                            ) : (
+                              <Cancel sx={{ color: '#EF4444', fontSize: '1.5rem' }} />
+                            )}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={1} justifyContent="center">
                               {factura.archivo_xml && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#10B981' }}
-                                  onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
-                                  title="Descargar XML"
-                                >
-                                  <Description fontSize="small" />
-                                </IconButton>
+                                <Tooltip title="Descargar XML" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#10B981',
+                                      '&:hover': { bgcolor: '#D1FAE5', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
+                                  >
+                                    <Article fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
-                              {factura.archivo_pdf && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#3B82F6' }}
-                                  onClick={() => handleViewPDF(factura.archivo_pdf)}
-                                  title="Ver PDF"
-                                >
-                                  <Visibility fontSize="small" />
-                                </IconButton>
+                              {factura.archivo_pdf ? (
+                                <Tooltip title="Ver PDF" arrow>
+                                  <IconButton 
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#DC2626',
+                                      '&:hover': { bgcolor: '#FEE2E2', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onClick={() => handleViewPDF(factura.archivo_pdf)}
+                                  >
+                                    <PictureAsPdf fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Cargar PDF" arrow>
+                                  <IconButton 
+                                    component="label"
+                                    size="small" 
+                                    sx={{ 
+                                      color: '#F97316',
+                                      '&:hover': { bgcolor: '#FFEDD5', transform: 'scale(1.1)' },
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    <CloudUpload fontSize="small" />
+                                    <input
+                                      type="file"
+                                      hidden
+                                      accept="application/pdf"
+                                      onChange={(e) => handleUploadPDFToInvoice(e, factura._id)}
+                                    />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                             </Stack>
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={0.5} justifyContent="center">
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: '#F59E0B' }}
-                                onClick={() => handleMarkAsPending(factura._id)}
-                                title="Marcar como pendiente"
-                              >
-                                <Undo fontSize="small" />
-                              </IconButton>
+                              <Tooltip title="Marcar como pendiente" arrow>
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ 
+                                    color: '#F59E0B',
+                                    '&:hover': { bgcolor: '#FEF3C7', transform: 'scale(1.1)' },
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onClick={() => handleMarkAsPending(factura._id, factura)}
+                                >
+                                  <UndoOutlined fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                             </Stack>
                           </td>
                         </tr>
@@ -1050,7 +1436,22 @@ export default function EmpresaDetailPage() {
                     </tbody>
                   </table>
                 </Box>
-              )}
+                
+                {/* Paginación */}
+                <TablePagination
+                  component="div"
+                  count={facturasFiltradas.length}
+                  page={paginaPagadas}
+                  onPageChange={(_, newPage) => setPaginaPagadas(newPage)}
+                  rowsPerPage={registrosPorPaginaPagadas}
+                  rowsPerPageOptions={[registrosPorPaginaPagadas]}
+                  labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                  labelRowsPerPage="Registros por página:"
+                  sx={{ borderTop: '1px solid #E2E8F0', mt: 2 }}
+                />
+              </>
+            );
+          })()}
             </CardContent>
           </Card>
         </TabPanel>
@@ -1065,20 +1466,25 @@ export default function EmpresaDetailPage() {
               </Typography>
               <Grid container spacing={2} sx={{ mt: 1 }}>
                 <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Buscar por Proveedor"
-                    placeholder="Nombre o RFC"
-                    value={filtroProveedor}
-                    onChange={(e) => setFiltroProveedor(e.target.value)}
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': { 
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Proveedor</InputLabel>
+                    <Select
+                      value={filtroProveedor}
+                      onChange={(e) => setFiltroProveedor(e.target.value)}
+                      label="Proveedor"
+                      sx={{ 
                         borderRadius: 2,
                         bgcolor: '#FFFFFF'
-                      }
-                    }}
-                  />
+                      }}
+                    >
+                      <MenuItem value="todos">Todos los proveedores</MenuItem>
+                      {proveedoresUnicos.map((prov) => (
+                        <MenuItem key={prov.rfc} value={prov.rfc}>
+                          {prov.nombre} - {prov.rfc}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <TextField
@@ -1129,11 +1535,8 @@ export default function EmpresaDetailPage() {
                   <Typography variant="h5" fontWeight="700" color="error.main">
                     $ {(() => {
                       let filtered = facturas;
-                      if (filtroProveedor) {
-                        filtered = filtered.filter(f => 
-                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
-                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
-                        );
+                      if (filtroProveedor && filtroProveedor !== 'todos') {
+                        filtered = filtered.filter(f => f.cfdi?.emisor?.rfc === filtroProveedor);
                       }
                       if (filtroFechaInicio) {
                         filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
@@ -1156,11 +1559,8 @@ export default function EmpresaDetailPage() {
                   <Typography variant="h5" fontWeight="700" color="success.main">
                     $ {(() => {
                       let filtered = facturasPagadas;
-                      if (filtroProveedor) {
-                        filtered = filtered.filter(f => 
-                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
-                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
-                        );
+                      if (filtroProveedor && filtroProveedor !== 'todos') {
+                        filtered = filtered.filter(f => f.cfdi?.emisor?.rfc === filtroProveedor);
                       }
                       if (filtroFechaInicio) {
                         filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
@@ -1183,11 +1583,8 @@ export default function EmpresaDetailPage() {
                   <Typography variant="h5" fontWeight="700" color="#D97706">
                     {(() => {
                       let filtered = facturas;
-                      if (filtroProveedor) {
-                        filtered = filtered.filter(f => 
-                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
-                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
-                        );
+                      if (filtroProveedor && filtroProveedor !== 'todos') {
+                        filtered = filtered.filter(f => f.cfdi?.emisor?.rfc === filtroProveedor);
                       }
                       if (filtroFechaInicio) {
                         filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
@@ -1210,11 +1607,8 @@ export default function EmpresaDetailPage() {
                   <Typography variant="h5" fontWeight="700" color="#2563EB">
                     {(() => {
                       let filtered = facturasPagadas;
-                      if (filtroProveedor) {
-                        filtered = filtered.filter(f => 
-                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
-                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
-                        );
+                      if (filtroProveedor && filtroProveedor !== 'todos') {
+                        filtered = filtered.filter(f => f.cfdi?.emisor?.rfc === filtroProveedor);
                       }
                       if (filtroFechaInicio) {
                         filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
@@ -1253,11 +1647,8 @@ export default function EmpresaDetailPage() {
               ) : (() => {
                 // Filtrar facturas
                 let facturasFiltradas = todasFacturas;
-                if (filtroProveedor) {
-                  facturasFiltradas = facturasFiltradas.filter(f => 
-                    (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
-                    (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
-                  );
+                if (filtroProveedor && filtroProveedor !== 'todos') {
+                  facturasFiltradas = facturasFiltradas.filter(f => f.cfdi?.emisor?.rfc === filtroProveedor);
                 }
                 if (filtroFechaInicio) {
                   facturasFiltradas = facturasFiltradas.filter(f => 
@@ -1589,6 +1980,171 @@ export default function EmpresaDetailPage() {
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
             Ver en Tabla de Facturas
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de confirmación para eliminar */}
+      <Dialog
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#FEE2E2', color: '#991B1B', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteOutline />
+          Eliminar Factura
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body1" gutterBottom>
+            ¿Estás seguro de que deseas eliminar esta factura?
+          </Typography>
+          {selectedInvoiceData && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: '#F9FAFB', borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Número:</strong> {selectedInvoiceData.numero_factura || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Proveedor:</strong> {selectedInvoiceData.cfdi?.emisor?.nombre || selectedInvoiceData.proveedor || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <strong>Monto:</strong> ${Number(selectedInvoiceData.cfdi?.total || selectedInvoiceData.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Typography>
+            </Box>
+          )}
+          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+            <strong>Esta acción no se puede deshacer.</strong>
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button 
+            onClick={() => setShowDeleteModal(false)}
+            variant="outlined"
+            sx={{ textTransform: 'none' }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={confirmDelete}
+            variant="contained"
+            color="error"
+            sx={{ textTransform: 'none' }}
+            startIcon={<DeleteOutline />}
+          >
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de confirmación para marcar como pagada */}
+      <Dialog
+        open={showMarkPaidModal}
+        onClose={() => setShowMarkPaidModal(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#D1FAE5', color: '#065F46', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CheckCircleOutline />
+          Marcar como Pagada
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body1" gutterBottom>
+            ¿Deseas marcar esta factura como pagada?
+          </Typography>
+          {selectedInvoiceData && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: '#F9FAFB', borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Número:</strong> {selectedInvoiceData.numero_factura || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Proveedor:</strong> {selectedInvoiceData.cfdi?.emisor?.nombre || selectedInvoiceData.proveedor || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>RFC:</strong> {selectedInvoiceData.cfdi?.emisor?.rfc || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <strong>Monto:</strong> ${Number(selectedInvoiceData.cfdi?.total || selectedInvoiceData.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button 
+            onClick={() => setShowMarkPaidModal(false)}
+            variant="outlined"
+            sx={{ textTransform: 'none' }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={confirmMarkAsPaid}
+            variant="contained"
+            sx={{ 
+              textTransform: 'none',
+              bgcolor: '#10B981',
+              '&:hover': { bgcolor: '#059669' }
+            }}
+            startIcon={<CheckCircleOutline />}
+          >
+            Marcar como Pagada
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de confirmación para marcar como pendiente */}
+      <Dialog
+        open={showMarkPendingModal}
+        onClose={() => setShowMarkPendingModal(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#FEF3C7', color: '#92400E', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <UndoOutlined />
+          Marcar como Pendiente
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body1" gutterBottom>
+            ¿Deseas revertir esta factura a estado pendiente?
+          </Typography>
+          {selectedInvoiceData && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: '#F9FAFB', borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Número:</strong> {selectedInvoiceData.numero_factura || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Proveedor:</strong> {selectedInvoiceData.cfdi?.emisor?.nombre || selectedInvoiceData.proveedor || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>RFC:</strong> {selectedInvoiceData.cfdi?.emisor?.rfc || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <strong>Monto:</strong> ${Number(selectedInvoiceData.cfdi?.total || selectedInvoiceData.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Typography>
+            </Box>
+          )}
+          <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
+            Esta factura volverá a la lista de pendientes de pago.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button 
+            onClick={() => setShowMarkPendingModal(false)}
+            variant="outlined"
+            sx={{ textTransform: 'none' }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={confirmMarkAsPending}
+            variant="contained"
+            sx={{ 
+              textTransform: 'none',
+              bgcolor: '#F59E0B',
+              '&:hover': { bgcolor: '#D97706' }
+            }}
+            startIcon={<UndoOutlined />}
+          >
+            Marcar como Pendiente
           </Button>
         </DialogActions>
       </Dialog>

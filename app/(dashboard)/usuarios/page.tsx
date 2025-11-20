@@ -33,12 +33,14 @@ import {
   Delete,
   People,
 } from '@mui/icons-material';
+import { Switch } from '@mui/material';
 
 interface User {
   _id: string;
   email: string;
   nombre: string;
   role: 'admin' | 'user';
+  activo: boolean;
   created_at: string;
 }
 
@@ -149,6 +151,26 @@ export default function UsuariosPage() {
     }
   };
 
+  const handleToggleActive = async (userId: string, currentStatus: boolean) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/toggle-active`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: !currentStatus }),
+      });
+
+      if (res.ok) {
+        fetchUsers();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al cambiar estado del usuario');
+      }
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      alert('Error al cambiar estado del usuario');
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -189,6 +211,7 @@ export default function UsuariosPage() {
                     <TableCell><strong>Nombre</strong></TableCell>
                     <TableCell><strong>Email</strong></TableCell>
                     <TableCell><strong>Rol</strong></TableCell>
+                    <TableCell><strong>Estado</strong></TableCell>
                     <TableCell><strong>Fecha Registro</strong></TableCell>
                     <TableCell align="right"><strong>Acciones</strong></TableCell>
                   </TableRow>
@@ -204,6 +227,21 @@ export default function UsuariosPage() {
                           size="small"
                           color={user.role === 'admin' ? 'primary' : 'default'}
                         />
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Switch
+                            checked={user.activo ?? true}
+                            onChange={() => handleToggleActive(user._id, user.activo ?? true)}
+                            color="success"
+                            size="small"
+                          />
+                          <Chip
+                            label={user.activo ?? true ? 'Activo' : 'Inactivo'}
+                            size="small"
+                            color={user.activo ?? true ? 'success' : 'default'}
+                          />
+                        </Stack>
                       </TableCell>
                       <TableCell>
                         {new Date(user.created_at).toLocaleDateString()}
