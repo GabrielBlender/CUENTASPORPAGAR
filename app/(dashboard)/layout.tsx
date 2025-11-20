@@ -32,6 +32,7 @@ import {
 import { Squash as Hamburger } from 'hamburger-react';
 
 const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH_MINI = 72;
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -78,9 +80,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', show: true },
+    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', show: currentUser?.role === 'admin' },
     { text: 'Empresas', icon: <Business />, path: '/empresas', show: true },
-    { text: 'Reportes', icon: <Assessment />, path: '/reportes', show: true },
+    { text: 'Reportes', icon: <Assessment />, path: '/reportes', show: currentUser?.role === 'admin' },
     { text: 'Usuarios', icon: <People />, path: '/usuarios', show: currentUser?.role === 'admin' },
   ];
 
@@ -92,20 +94,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          bgcolor: '#1E293B',
+          minHeight: 64,
         }}
       >
-        <Typography 
-          variant="h5" 
-          sx={{ 
-            fontWeight: 800, 
-            color: '#FFFFFF',
-            letterSpacing: 1,
-          }}
-        >
-          CxP System
-        </Typography>
+        {(isMobile || desktopOpen) ? (
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              fontWeight: 700, 
+              color: '#FFFFFF',
+            }}
+          >
+            Cuenta por Cobrar
+          </Typography>
+        ) : (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Hamburger
+              toggled={desktopOpen}
+              toggle={() => setDesktopOpen(!desktopOpen)}
+              size={22}
+              color="#FFFFFF"
+              rounded
+              label="Toggle menu"
+            />
+          </Box>
+        )}
       </Box>
+
+      <Divider sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
 
       <List sx={{ mt: 2, px: 2, flexGrow: 1 }}>
         {menuItems.filter(item => item.show).map((item) => (
@@ -119,76 +136,97 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               sx={{
                 borderRadius: 2,
                 minHeight: 52,
+                justifyContent: (isMobile || desktopOpen) ? 'initial' : 'center',
+                px: (isMobile || desktopOpen) ? 2.5 : 1.5,
                 '&.Mui-selected': {
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: '#FFFFFF',
+                  bgcolor: '#2563EB',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #5568d3 0%, #6a3f91 100%)',
+                    bgcolor: '#1E40AF',
                   },
                   '& .MuiListItemIcon-root': {
                     color: '#FFFFFF',
                   },
                 },
                 '&:hover': {
-                  bgcolor: 'rgba(102, 126, 234, 0.08)',
+                  bgcolor: 'rgba(37, 99, 235, 0.1)',
                 },
               }}
             >
               <ListItemIcon
                 sx={{
-                  minWidth: 45,
-                  color: pathname.startsWith(item.path) ? '#FFFFFF' : '#64748B',
+                  minWidth: (isMobile || desktopOpen) ? 45 : 0,
+                  mr: (isMobile || desktopOpen) ? 0 : 'auto',
+                  justifyContent: 'center',
+                  color: pathname.startsWith(item.path) ? '#FFFFFF' : '#94A3B8',
                 }}
               >
                 {item.icon}
               </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                sx={{
-                  '& .MuiTypography-root': {
-                    fontWeight: pathname.startsWith(item.path) ? 600 : 500,
-                    fontSize: '0.95rem',
-                  },
-                }}
-              />
+              {(isMobile || desktopOpen) && (
+                <ListItemText
+                  primary={item.text}
+                  sx={{
+                    '& .MuiTypography-root': {
+                      fontWeight: pathname.startsWith(item.path) ? 600 : 500,
+                      fontSize: '0.95rem',
+                      color: '#FFFFFF',
+                    },
+                  }}
+                />
+              )}
             </ListItemButton>
           </ListItem>
         ))}
       </List>
 
-      <Divider sx={{ mx: 2 }} />
+      <Divider sx={{ mx: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
       
-      <Box sx={{ p: 2, mt: 'auto' }}>
-        <Box
-          sx={{
-            p: 2,
-            borderRadius: 2,
-            bgcolor: '#F1F5F9',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-          }}
-        >
+      {(isMobile || desktopOpen) ? (
+        <Box sx={{ p: 2, mt: 'auto' }}>
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: 'rgba(255,255,255,0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+            }}
+          >
+            <Avatar 
+              sx={{ 
+                width: 40, 
+                height: 40, 
+                bgcolor: '#2563EB',
+                fontWeight: 600,
+              }}
+            >
+              {currentUser?.email?.charAt(0).toUpperCase()}
+            </Avatar>
+            <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+              <Typography variant="body2" fontWeight="600" noWrap sx={{ color: '#FFFFFF' }}>
+                {currentUser?.nombre || 'Usuario'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ color: '#94A3B8' }}>
+                {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      ) : (
+        <Box sx={{ p: 2, mt: 'auto', display: 'flex', justifyContent: 'center' }}>
           <Avatar 
             sx={{ 
               width: 40, 
               height: 40, 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              bgcolor: '#2563EB',
               fontWeight: 600,
             }}
           >
             {currentUser?.email?.charAt(0).toUpperCase()}
           </Avatar>
-          <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-            <Typography variant="body2" fontWeight="600" noWrap>
-              {currentUser?.nombre || 'Usuario'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
-            </Typography>
-          </Box>
         </Box>
-      </Box>
+      )}
     </Box>
   );
 
@@ -199,18 +237,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         position="fixed"
         elevation={0}
         sx={{
-          width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          ml: { xs: 0, md: `${DRAWER_WIDTH}px` },
+          width: { 
+            xs: '100%', 
+            md: desktopOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : `calc(100% - ${DRAWER_WIDTH_MINI}px)`
+          },
+          ml: { 
+            xs: 0, 
+            md: desktopOpen ? `${DRAWER_WIDTH}px` : `${DRAWER_WIDTH_MINI}px`
+          },
           bgcolor: '#FFFFFF',
           borderBottom: '1px solid #E2E8F0',
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         <Toolbar>
-          {isMobile && (
+          {(isMobile || desktopOpen) && (
             <Box sx={{ mr: 2 }}>
               <Hamburger
-                toggled={mobileOpen}
-                toggle={setMobileOpen}
+                toggled={isMobile ? mobileOpen : desktopOpen}
+                toggle={() => isMobile ? setMobileOpen(!mobileOpen) : setDesktopOpen(!desktopOpen)}
                 size={24}
                 color="#1E293B"
                 rounded
@@ -228,7 +276,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               fontSize: { xs: '1.1rem', sm: '1.25rem' },
             }}
           >
-            Cuentas por Pagar
+            
           </Typography>
 
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small">
@@ -236,7 +284,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               sx={{ 
                 width: { xs: 32, sm: 36 }, 
                 height: { xs: 32, sm: 36 },
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                bgcolor: '#2563EB',
                 fontWeight: 600,
               }}
             >
@@ -307,6 +355,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               boxSizing: 'border-box',
               border: 'none',
               boxShadow: '4px 0 12px rgba(0,0,0,0.08)',
+              bgcolor: '#1E293B',
+              borderRadius: 0,
             },
           }}
         >
@@ -319,13 +369,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         variant="permanent"
         sx={{
           display: { xs: 'none', md: 'block' },
-          width: DRAWER_WIDTH,
+          width: desktopOpen ? DRAWER_WIDTH : DRAWER_WIDTH_MINI,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
-            width: DRAWER_WIDTH,
+            width: desktopOpen ? DRAWER_WIDTH : DRAWER_WIDTH_MINI,
             boxSizing: 'border-box',
             border: 'none',
             boxShadow: '2px 0 8px rgba(0,0,0,0.04)',
+            bgcolor: '#1E293B',
+            borderRadius: 0,
+            overflowX: 'hidden',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
           },
         }}
       >
@@ -341,7 +398,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           p: { xs: 2, sm: 3 },
           mt: { xs: 7, sm: 8 },
           minHeight: 'calc(100vh - 64px)',
-          width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          width: { 
+            xs: '100%', 
+            md: desktopOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : `calc(100% - ${DRAWER_WIDTH_MINI}px)`
+          },
+          ml: {
+            xs: 0,
+            md: desktopOpen ? `${DRAWER_WIDTH}px` : `${DRAWER_WIDTH_MINI}px`
+          },
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         {children}

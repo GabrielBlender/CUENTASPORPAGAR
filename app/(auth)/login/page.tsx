@@ -116,7 +116,7 @@ export default function LoginPage() {
               </Avatar>
               
               <Typography variant="h5" component="h1" fontWeight="700" gutterBottom color="text.primary">
-                Sistema de Cuentas por Pagar
+                Sistema de Cuentas por Cobrar
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Ingresa tus credenciales para continuar

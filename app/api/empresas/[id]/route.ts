@@ -71,7 +71,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Eliminar empresa
+// DELETE - Eliminar empresa y todas sus facturas
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -79,37 +79,65 @@ export async function DELETE(
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'No autorizado. Solo administradores pueden eliminar empresas.' },
+        { status: 403 }
+      );
+    }
+
+    const { id } = params;
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { error: 'ID de empresa inválido' },
+        { status: 400 }
+      );
     }
 
     const db = await getDatabase();
 
-    // Verificar si hay facturas asociadas
-    const invoiceCount = await db
-      .collection('invoices')
-      .countDocuments({ empresa_id: params.id });
+    // Verificar que la empresa existe
+    const empresa = await db.collection('empresas').findOne({
+      _id: new ObjectId(id),
+    });
 
-    if (invoiceCount > 0) {
+    if (!empresa) {
       return NextResponse.json(
-        { error: 'No se puede eliminar una empresa con facturas asociadas' },
-        { status: 409 }
+        { error: 'Empresa no encontrada' },
+        { status: 404 }
       );
     }
 
-    const result = await db
-      .collection('empresas')
-      .deleteOne({ _id: new ObjectId(params.id) });
+    // Eliminar todas las facturas asociadas a esta empresa
+    const deleteFacturasResult = await db.collection('invoices').deleteMany({
+      empresa_id: new ObjectId(id),
+    });
 
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Empresa no encontrada' }, { status: 404 });
+    // Eliminar la empresa
+    const deleteEmpresaResult = await db.collection('empresas').deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    if (deleteEmpresaResult.deletedCount === 0) {
+      return NextResponse.json(
+        { error: 'No se pudo eliminar la empresa' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Empresa eliminada exitosamente',
+      message: `Empresa eliminada correctamente junto con ${deleteFacturasResult.deletedCount} factura(s)`,
+      data: {
+        empresaEliminada: empresa.nombre,
+        facturasEliminadas: deleteFacturasResult.deletedCount,
+      },
     });
   } catch (error) {
     console.error('Delete empresa error:', error);
-    return NextResponse.json({ error: 'Error al eliminar empresa' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Error al eliminar empresa' },
+      { status: 500 }
+    );
   }
 }

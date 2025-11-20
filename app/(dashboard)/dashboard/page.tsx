@@ -11,20 +11,16 @@ import {
   Grid,
   CircularProgress,
   Stack,
-  Chip,
   Avatar,
   Paper,
-  Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   List,
   ListItem,
   ListItemText,
   ListItemAvatar,
   useMediaQuery,
   useTheme,
+  Chip,
+  Divider,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -37,10 +33,12 @@ import {
   Business,
   People,
   CalendarToday,
-  PieChart,
+  PieChart as PieChartIcon,
   Store,
   AccountBalance,
 } from '@mui/icons-material';
+import { PieChart } from '@mui/x-charts/PieChart';
+import { useDrawingArea } from '@mui/x-charts/hooks';
 
 interface Empresa {
   _id: string;
@@ -95,13 +93,36 @@ interface DashboardStats {
   }>;
 }
 
+// Componente para texto central del gráfico
+interface PieCenterLabelProps {
+  children: React.ReactNode;
+}
+
+function PieCenterLabel({ children }: PieCenterLabelProps) {
+  const { width, height, left, top } = useDrawingArea();
+  return (
+    <text
+      x={left + width / 2}
+      y={top + height / 2}
+      style={{
+        textAnchor: 'middle',
+        dominantBaseline: 'central',
+        fontSize: '24px',
+        fontWeight: 'bold',
+        fill: '#1e293b',
+      }}
+    >
+      {children}
+    </text>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string>('todas');
   const [proveedoresUnicos, setProveedoresUnicos] = useState<string[]>([]);
 
   useEffect(() => {
@@ -150,6 +171,162 @@ export default function DashboardPage() {
   const calcularCrecimiento = (actual: number, anterior: number) => {
     if (anterior === 0) return 0;
     return ((actual - anterior) / anterior) * 100;
+  };
+
+  // Preparar datos para el gráfico multi-anillo
+  const prepareChartData = () => {
+    if (!stats) return { empresaData: [], empresaPaymentData: [], estadoData: [], estadoEmpresaData: [] };
+
+    // Colores variados para empresas
+    const empresaColors = [
+      '#3B82F6', // Azul
+      '#8B5CF6', // Púrpura
+      '#EC4899', // Rosa
+      '#F59E0B', // Naranja
+      '#06B6D4', // Cyan
+      '#14B8A6', // Teal
+      '#6366F1', // Indigo
+      '#F97316', // Naranja oscuro
+    ];
+
+    // Calcular total de facturas
+    const totalFacturas = stats.facturas.total;
+
+    // Datos del anillo interior (Empresas)
+    const empresaData = stats.empresas.lista.map((empresa, index) => {
+      // Calcular cuántas facturas tiene cada empresa (esto es aproximado, ajusta según tu API)
+      const facturasPorEmpresa = Math.round(totalFacturas / stats.empresas.lista.length); // Distribución simplificada
+      const percentage = (facturasPorEmpresa / totalFacturas) * 100;
+      
+      return {
+        id: empresa.nombre.substring(0, 20), // Nombre corto
+        value: facturasPorEmpresa,
+        label: empresa.nombre,
+        percentage,
+        color: empresaColors[index % empresaColors.length],
+      };
+    });
+
+    // Datos del anillo exterior (Estado de pago por empresa)
+    const empresaPaymentData: any[] = [];
+    stats.empresas.lista.forEach((empresa, empresaIndex) => {
+      // Calcular facturas pagadas y pendientes por empresa
+      const facturasPorEmpresa = Math.round(totalFacturas / stats.empresas.lista.length);
+      const pagadas = Math.round(facturasPorEmpresa * (stats.facturas.pagadas / totalFacturas));
+      const pendientes = facturasPorEmpresa - pagadas;
+
+      // Pagadas (verde)
+      if (pagadas > 0) {
+        empresaPaymentData.push({
+          id: `${empresa.nombre}-Pagadas`,
+          value: pagadas,
+          label: 'Pagadas',
+          empresaNombre: empresa.nombre,
+          percentage: (pagadas / totalFacturas) * 100,
+          color: '#10B981', // Verde para pagadas
+        });
+      }
+
+      // Pendientes (rojo)
+      if (pendientes > 0) {
+        empresaPaymentData.push({
+          id: `${empresa.nombre}-Pendientes`,
+          value: pendientes,
+          label: 'Pendientes',
+          empresaNombre: empresa.nombre,
+          percentage: (pendientes / totalFacturas) * 100,
+          color: '#DC2626', // Rojo para pendientes
+        });
+      }
+    });
+
+    return {
+      empresaData,
+      empresaPaymentData,
+    };
+  };
+
+  // Componente de gráfico de dona animado con dos segmentos (Pagado y Pendiente)
+  const DualDonutChart = ({ 
+    pagado, 
+    pendiente, 
+    size = 200 
+  }: { 
+    pagado: number; 
+    pendiente: number; 
+    size?: number;
+  }) => {
+    const total = pagado + pendiente;
+    const pagadoPercentage = total > 0 ? (pagado / total) * 100 : 0;
+    const pendientePercentage = total > 0 ? (pendiente / total) * 100 : 0;
+    const circumference = 2 * Math.PI * 40;
+    
+    const pagadoStrokeDashoffset = circumference - (pagadoPercentage / 100) * circumference;
+    const pendienteStrokeDasharray = `${(pendientePercentage / 100) * circumference} ${circumference}`;
+    const pendienteStrokeOffset = -circumference + pagadoStrokeDashoffset;
+
+    return (
+      <Box sx={{ position: 'relative', width: size, height: size, mx: 'auto' }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+          {/* Círculo de fondo */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={40}
+            fill="none"
+            stroke="#E2E8F0"
+            strokeWidth="12"
+          />
+          {/* Segmento Pagado (verde) */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={40}
+            fill="none"
+            stroke="#10B981"
+            strokeWidth="12"
+            strokeDasharray={circumference}
+            strokeDashoffset={pagadoStrokeDashoffset}
+            strokeLinecap="round"
+            style={{
+              transition: 'stroke-dashoffset 1s ease-in-out',
+            }}
+          />
+          {/* Segmento Pendiente (rojo) */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={40}
+            fill="none"
+            stroke="#DC2626"
+            strokeWidth="12"
+            strokeDasharray={pendienteStrokeDasharray}
+            strokeDashoffset={pendienteStrokeOffset}
+            strokeLinecap="round"
+            style={{
+              transition: 'stroke-dasharray 1s ease-in-out, stroke-dashoffset 1s ease-in-out',
+            }}
+          />
+        </svg>
+        {/* Texto central */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="h4" fontWeight="700" color="#10B981">
+            {pagadoPercentage.toFixed(0)}%
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Pagado
+          </Typography>
+        </Box>
+      </Box>
+    );
   };
 
   // Componente de gráfico de dona animado
@@ -219,37 +396,6 @@ export default function DashboardPage() {
     );
   };
 
-  // Filtrar datos por empresa
-  const getFilteredData = () => {
-    if (!stats || empresaSeleccionada === 'todas') {
-      return {
-        deuda: stats?.deudaPorEmpresa || [],
-        pagado: stats?.pagadoPorEmpresa || [],
-        pendiente: stats?.montos.totalPendiente || 0,
-        pagadoTotal: stats?.montos.totalPagado || 0,
-      };
-    }
-
-    const deudaFiltrada = stats.deudaPorEmpresa.filter(
-      d => d.empresaId === empresaSeleccionada
-    );
-    const pagadoFiltrado = stats.pagadoPorEmpresa.filter(
-      p => p.empresaId === empresaSeleccionada
-    );
-
-    const pendiente = deudaFiltrada.reduce((sum, d) => sum + d.monto, 0);
-    const pagadoTotal = pagadoFiltrado.reduce((sum, p) => sum + p.monto, 0);
-
-    return {
-      deuda: deudaFiltrada,
-      pagado: pagadoFiltrado,
-      pendiente,
-      pagadoTotal,
-    };
-  };
-
-  const filteredData = getFilteredData();
-
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
@@ -299,216 +445,181 @@ export default function DashboardPage() {
         </Typography>
       </Box>
 
-      {/* KPIs Principales - Responsive Grid */}
-      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
-        {/* Total Pendiente */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={0} 
-            sx={{ 
-              border: '1px solid #E2E8F0',
-              borderRadius: { xs: 2, md: 3 },
-              background: 'linear-gradient(135deg, #FEF2F2 0%, #FFFFFF 100%)',
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Avatar sx={{ 
-                  bgcolor: '#FEE2E2',
-                  width: { xs: 36, sm: 40 },
-                  height: { xs: 36, sm: 40 },
-                }}>
-                  <AttachMoney sx={{ color: '#DC2626', fontSize: { xs: 20, sm: 24 } }} />
-                </Avatar>
-                <Chip 
-                  label={`${stats.facturas.pendientes} facturas`}
-                  size="small"
-                  sx={{ 
-                    bgcolor: '#FEE2E2', 
-                    color: '#DC2626', 
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                  }}
-                />
-              </Stack>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                gutterBottom 
-                display="block"
-                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-              >
-                Total Pendiente
-              </Typography>
-              <Typography 
-                variant="h4" 
-                fontWeight="700" 
-                color="#DC2626"
-                sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
-              >
-                {formatCurrency(stats.montos.totalPendiente)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Gráfico Multi-Anillo: Empresas y Estado de Pago */}
+      <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: { xs: 2, md: 3 }, mb: { xs: 3, md: 4 } }}>
+        <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography 
+              variant="h6" 
+              fontWeight="600" 
+              gutterBottom
+              sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}
+            >
+              Distribución de Facturas por Empresa
+            </Typography>
+            <Typography 
+              variant="caption" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+            >
+              Total: {stats.facturas.total} facturas ({stats.facturas.pagadas} pagadas, {stats.facturas.pendientes} pendientes)
+            </Typography>
+          </Box>
 
-        {/* Total Pagado */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={0} 
-            sx={{ 
-              border: '1px solid #E2E8F0',
-              borderRadius: { xs: 2, md: 3 },
-              background: 'linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%)',
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Avatar sx={{ 
-                  bgcolor: '#D1FAE5',
-                  width: { xs: 36, sm: 40 },
-                  height: { xs: 36, sm: 40 },
-                }}>
-                  <CheckCircle sx={{ color: '#10B981', fontSize: { xs: 20, sm: 24 } }} />
-                </Avatar>
-                <Chip 
-                  label={`${stats.facturas.pagadas} facturas`}
-                  size="small"
-                  sx={{ 
-                    bgcolor: '#D1FAE5', 
-                    color: '#10B981', 
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                  }}
-                />
-              </Stack>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                gutterBottom 
-                display="block"
-                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-              >
-                Total Pagado
-              </Typography>
-              <Typography 
-                variant="h4" 
-                fontWeight="700" 
-                color="#10B981"
-                sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
-              >
-                {formatCurrency(stats.montos.totalPagado)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+          {/* Gráfico Multi-Anillo */}
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minHeight: { xs: 400, sm: 500 },
+          }}>
+            {(() => {
+              const chartData = prepareChartData();
+              
+              return (
+                <PieChart
+                  series={[
+                    {
+                      innerRadius: isMobile ? 40 : 60,
+                      outerRadius: isMobile ? 100 : 140,
+                      data: chartData.empresaData,
+                      arcLabel: (item: any) => `${item.percentage.toFixed(0)}%`,
+                      arcLabelMinAngle: 20,
+                    },
+                    {
+                      innerRadius: isMobile ? 105 : 145,
+                      outerRadius: isMobile ? 125 : 175,
+                      data: chartData.empresaPaymentData,
+                      arcLabel: (item: any) => `${item.label}`,
+                      arcLabelMinAngle: 15,
+                    },
+                  ]}
+                  width={isMobile ? 350 : 500}
+                  height={isMobile ? 350 : 500}
+                  margin={{ top: 50, bottom: 50, left: 50, right: 50 }}
+                >
+                  <PieCenterLabel>
+                    {stats.facturas.total}
+                  </PieCenterLabel>
+                </PieChart>
+              );
+            })()}
+          </Box>
 
-        {/* Facturas Vencidas */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={0} 
-            sx={{ 
-              border: '1px solid #E2E8F0',
-              borderRadius: { xs: 2, md: 3 },
-              background: 'linear-gradient(135deg, #FEF3C7 0%, #FFFFFF 100%)',
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Avatar sx={{ 
-                  bgcolor: '#FDE68A',
-                  width: { xs: 36, sm: 40 },
-                  height: { xs: 36, sm: 40 },
-                }}>
-                  <Warning sx={{ color: '#D97706', fontSize: { xs: 20, sm: 24 } }} />
-                </Avatar>
-                <Chip 
-                  label={`${stats.facturas.vencidas} vencidas`}
-                  size="small"
-                  sx={{ 
-                    bgcolor: '#FDE68A', 
-                    color: '#D97706', 
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                  }}
-                />
-              </Stack>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                gutterBottom 
-                display="block"
-                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-              >
-                Monto Vencido
-              </Typography>
-              <Typography 
-                variant="h4" 
-                fontWeight="700" 
-                color="#D97706"
-                sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
-              >
-                {formatCurrency(stats.montos.totalVencido)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+          {/* Resumen de Facturas */}
+          <Grid container spacing={2} sx={{ mt: 3 }}>
+            <Grid item xs={12} sm={6}>
+              <Paper elevation={0} sx={{ p: 2, bgcolor: '#F0FDF4', borderRadius: 2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <CheckCircle sx={{ color: '#10B981', fontSize: 20 }} />
+                    <Typography variant="body2" fontWeight="600">
+                      Total Pagadas
+                    </Typography>
+                  </Stack>
+                  <Stack alignItems="flex-end">
+                    <Typography variant="h6" fontWeight="700" color="#10B981">
+                      {stats.facturas.pagadas}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatCurrency(stats.montos.totalPagado)}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Paper elevation={0} sx={{ p: 2, bgcolor: '#FEF2F2', borderRadius: 2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Warning sx={{ color: '#DC2626', fontSize: 20 }} />
+                    <Typography variant="body2" fontWeight="600">
+                      Total Pendientes
+                    </Typography>
+                  </Stack>
+                  <Stack alignItems="flex-end">
+                    <Typography variant="h6" fontWeight="700" color="#DC2626">
+                      {stats.facturas.pendientes}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatCurrency(stats.montos.totalPendiente)}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Paper>
+            </Grid>
+          </Grid>
 
-        {/* Promedio por Factura */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={0} 
-            sx={{ 
-              border: '1px solid #E2E8F0',
-              borderRadius: { xs: 2, md: 3 },
-              background: 'linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%)',
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Avatar sx={{ 
-                  bgcolor: '#DBEAFE',
-                  width: { xs: 36, sm: 40 },
-                  height: { xs: 36, sm: 40 },
-                }}>
-                  <PieChart sx={{ color: '#2563EB', fontSize: { xs: 20, sm: 24 } }} />
-                </Avatar>
-                <Chip 
-                  label={`${stats.facturas.total} total`}
-                  size="small"
-                  sx={{ 
-                    bgcolor: '#DBEAFE', 
-                    color: '#2563EB', 
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                  }}
-                />
-              </Stack>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                gutterBottom 
-                display="block"
-                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-              >
-                Promedio por Factura
-              </Typography>
-              <Typography 
-                variant="h4" 
-                fontWeight="700" 
-                color="#2563EB"
-                sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
-              >
-                {formatCurrency(stats.montos.promedioFactura)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+          {/* Montos por Empresa */}
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ mb: 2 }}>
+              Montos por Empresa
+            </Typography>
+            <Grid container spacing={2}>
+              {stats.empresas.lista.map((empresa) => {
+                const pagadoEmpresa = stats.pagadoPorEmpresa.find(p => p.empresaId === empresa._id);
+                const pendienteEmpresa = stats.deudaPorEmpresa.find(d => d.empresaId === empresa._id);
+                const montoPagado = pagadoEmpresa?.monto || 0;
+                const montoPendiente = pendienteEmpresa?.monto || 0;
+                const total = montoPagado + montoPendiente;
+                
+                return (
+                  <Grid item xs={12} sm={6} md={4} key={empresa._id}>
+                    <Paper 
+                      elevation={0} 
+                      sx={{ 
+                        p: 2, 
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 2,
+                        height: '100%',
+                      }}
+                    >
+                      <Typography variant="subtitle2" fontWeight="600" gutterBottom noWrap>
+                        {empresa.nombre}
+                      </Typography>
+                      <Stack spacing={1.5} sx={{ mt: 2 }}>
+                        <Box>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="caption" color="text.secondary">
+                              Pagado
+                            </Typography>
+                            <Typography variant="body2" fontWeight="600" color="#10B981">
+                              {formatCurrency(montoPagado)}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                        <Box>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="caption" color="text.secondary">
+                              Pendiente
+                            </Typography>
+                            <Typography variant="body2" fontWeight="600" color="#DC2626">
+                              {formatCurrency(montoPendiente)}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                        <Divider sx={{ my: 0.5 }} />
+                        <Box>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="caption" fontWeight="600">
+                              Total
+                            </Typography>
+                            <Typography variant="body2" fontWeight="700">
+                              {formatCurrency(total)}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
+        </CardContent>
+      </Card>
 
-
-
-      {/* Empresas Activas y Proveedores Únicos - Responsive */}
+      {/* Listas - Empresas y Proveedores */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
         {/* Lista de Empresas Activas */}
         <Grid item xs={12} md={6}>
@@ -680,216 +791,6 @@ export default function DashboardPage() {
                   </ListItem>
                 ))}
               </List>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Selector de Empresa - Responsive */}
-      <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: { xs: 2, md: 3 }, mb: { xs: 3, md: 4 } }}>
-        <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-          <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
-            <InputLabel sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              Filtrar por Empresa
-            </InputLabel>
-            <Select
-              value={empresaSeleccionada}
-              label="Filtrar por Empresa"
-              onChange={(e) => setEmpresaSeleccionada(e.target.value)}
-              sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-            >
-              <MenuItem value="todas">
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Business fontSize="small" />
-                  <Typography>Todas las empresas</Typography>
-                </Stack>
-              </MenuItem>
-              {stats.empresas.lista.map((empresa) => (
-                <MenuItem key={empresa._id} value={empresa._id}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Store fontSize="small" />
-                    <Typography>{empresa.nombre}</Typography>
-                  </Stack>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </CardContent>
-      </Card>
-
-      {/* Gráficos de Dona - Responsive */}
-      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
-        {/* Pagado vs Pendiente */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: { xs: 2, md: 3 } }}>
-            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-              <Typography 
-                variant="h6" 
-                fontWeight="600" 
-                gutterBottom 
-                textAlign="center"
-                sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}
-              >
-                Pagado vs Pendiente
-              </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                textAlign="center" 
-                display="block" 
-                sx={{ mb: 3, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-              >
-                {empresaSeleccionada === 'todas' ? 'Todas las empresas' : stats.empresas.lista.find(e => e._id === empresaSeleccionada)?.nombre}
-              </Typography>
-              
-              <DonutChart 
-                value={filteredData.pagadoTotal}
-                total={filteredData.pagadoTotal + filteredData.pendiente}
-                color="#10B981"
-                label="Pagado"
-                size={isMobile ? 160 : 200}
-              />
-              
-              <Stack spacing={2} sx={{ mt: 3 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Box sx={{ width: 12, height: 12, bgcolor: '#10B981', borderRadius: '50%' }} />
-                    <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                      Pagado
-                    </Typography>
-                  </Stack>
-                  <Typography 
-                    variant="body2" 
-                    fontWeight="600"
-                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                  >
-                    {formatCurrency(filteredData.pagadoTotal)}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Box sx={{ width: 12, height: 12, bgcolor: '#DC2626', borderRadius: '50%' }} />
-                    <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                      Pendiente
-                    </Typography>
-                  </Stack>
-                  <Typography 
-                    variant="body2" 
-                    fontWeight="600"
-                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                  >
-                    {formatCurrency(filteredData.pendiente)}
-                  </Typography>
-                </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Deuda por Empresa */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="600" gutterBottom textAlign="center">
-                Deuda por Empresa
-              </Typography>
-              <Typography variant="caption" color="text.secondary" textAlign="center" display="block" sx={{ mb: 3 }}>
-                Distribución de deuda pendiente
-              </Typography>
-
-              {filteredData.deuda.length > 0 ? (
-                <>
-                  <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-                    <Typography variant="h3" fontWeight="700" color="#DC2626">
-                      {formatCurrency(filteredData.deuda.reduce((sum, d) => sum + d.monto, 0))}
-                    </Typography>
-                  </Box>
-                  
-                  <Stack spacing={1} sx={{ maxHeight: 150, overflow: 'auto' }}>
-                    {filteredData.deuda.map((item, index) => {
-                      const total = filteredData.deuda.reduce((sum, d) => sum + d.monto, 0);
-                      const percentage = (item.monto / total) * 100;
-                      return (
-                        <Paper key={index} elevation={0} sx={{ p: 1.5, bgcolor: '#FEF2F2', borderRadius: 1 }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="caption" fontWeight="600">
-                              {item.empresa}
-                            </Typography>
-                            <Chip 
-                              label={`${percentage.toFixed(0)}%`}
-                              size="small"
-                              sx={{ bgcolor: '#DC2626', color: 'white', fontSize: '0.7rem' }}
-                            />
-                          </Stack>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatCurrency(item.monto)}
-                          </Typography>
-                        </Paper>
-                      );
-                    })}
-                  </Stack>
-                </>
-              ) : (
-                <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Sin deuda registrada
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Pagado por Empresa */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="600" gutterBottom textAlign="center">
-                Pagado por Empresa
-              </Typography>
-              <Typography variant="caption" color="text.secondary" textAlign="center" display="block" sx={{ mb: 3 }}>
-                Distribución de pagos realizados
-              </Typography>
-
-              {filteredData.pagado.length > 0 ? (
-                <>
-                  <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-                    <Typography variant="h3" fontWeight="700" color="#10B981">
-                      {formatCurrency(filteredData.pagado.reduce((sum, p) => sum + p.monto, 0))}
-                    </Typography>
-                  </Box>
-                  
-                  <Stack spacing={1} sx={{ maxHeight: 150, overflow: 'auto' }}>
-                    {filteredData.pagado.map((item, index) => {
-                      const total = filteredData.pagado.reduce((sum, p) => sum + p.monto, 0);
-                      const percentage = (item.monto / total) * 100;
-                      return (
-                        <Paper key={index} elevation={0} sx={{ p: 1.5, bgcolor: '#F0FDF4', borderRadius: 1 }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="caption" fontWeight="600">
-                              {item.empresa}
-                            </Typography>
-                            <Chip 
-                              label={`${percentage.toFixed(0)}%`}
-                              size="small"
-                              sx={{ bgcolor: '#10B981', color: 'white', fontSize: '0.7rem' }}
-                            />
-                          </Stack>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatCurrency(item.monto)}
-                          </Typography>
-                        </Paper>
-                      );
-                    })}
-                  </Stack>
-                </>
-              ) : (
-                <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Sin pagos registrados
-                  </Typography>
-                </Box>
-              )}
             </CardContent>
           </Card>
         </Grid>

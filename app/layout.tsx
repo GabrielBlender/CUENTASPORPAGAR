@@ -9,7 +9,7 @@ import { theme } from '@/styles/theme';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'Cuentas por Pagar v2.0',
+  title: 'Cuentas por Pagar',
   description: 'Sistema de gestión de cuentas por pagar con CFDI 4.0',
 };
 
