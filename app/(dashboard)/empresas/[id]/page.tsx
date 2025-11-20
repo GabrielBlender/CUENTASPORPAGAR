@@ -18,6 +18,7 @@ import {
   Stack,
   IconButton,
   Chip,
+  CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -62,7 +63,6 @@ export default function EmpresaDetailPage() {
   const [empresa, setEmpresa] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedPDF, setSelectedPDF] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [facturas, setFacturas] = useState<any[]>([]);
   const [facturasPagadas, setFacturasPagadas] = useState<any[]>([]);
@@ -277,26 +277,12 @@ export default function EmpresaDetailPage() {
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      if (file.name.endsWith('.xml')) {
-        setSelectedFile(file);
-      } else if (file.name.endsWith('.pdf')) {
-        setSelectedPDF(file);
-      }
-    }
-  };
-
   const handleUploadPDF = async () => {
     if (!selectedFile || !empresaId) return;
 
     setUploading(true);
     const formData = new FormData();
     formData.append('xml', selectedFile);
-    if (selectedPDF) {
-      formData.append('pdf', selectedPDF);
-    }
     formData.append('empresa_id', empresaId);
 
     try {
@@ -307,9 +293,9 @@ export default function EmpresaDetailPage() {
 
       if (res.ok) {
         setSelectedFile(null);
-        setSelectedPDF(null);
         await fetchFacturas();
-        alert('Factura procesada exitosamente');
+        setTabValue(1); // Cambiar a la pestaña de "Todas las Facturas"
+        alert('Factura procesada exitosamente. Ahora puedes agregar el PDF desde la tabla.');
       } else {
         const error = await res.json();
         alert(error.error || 'Error al subir factura');
@@ -377,85 +363,64 @@ export default function EmpresaDetailPage() {
 
         {/* Tab 0: Subir Factura */}
         <TabPanel value={tabValue} index={0}>
-          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, maxWidth: 700, mx: 'auto' }}>
+          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, maxWidth: 600, mx: 'auto' }}>
             <CardContent sx={{ p: 4 }}>
-              <Box sx={{ textAlign: 'center', mb: 3 }}>
-                <FileUpload sx={{ fontSize: 48, color: '#2563EB', mb: 2 }} />
-                <Typography variant="h6" fontWeight="600" gutterBottom>
-                  Subir Factura CFDI (XML)
+              <Box sx={{ textAlign: 'center', mb: 4 }}>
+                <FileUpload sx={{ fontSize: 64, color: '#2563EB', mb: 2 }} />
+                <Typography variant="h5" fontWeight="600" gutterBottom>
+                  Subir Factura CFDI
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  El archivo XML es obligatorio para extraer los datos de la factura
+                  Selecciona el archivo XML para extraer automáticamente los datos de la factura
                 </Typography>
               </Box>
 
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
-                  <Box
-                    sx={{
-                      border: '2px dashed #CBD5E1',
-                      borderRadius: 2,
-                      p: 3,
-                      textAlign: 'center',
-                      bgcolor: selectedFile ? '#EFF6FF' : '#F8FAFC',
-                      borderColor: selectedFile ? '#2563EB' : '#CBD5E1',
-                    }}
+              <Box
+                sx={{
+                  border: '2px dashed #CBD5E1',
+                  borderRadius: 3,
+                  p: 5,
+                  textAlign: 'center',
+                  bgcolor: selectedFile ? '#EFF6FF' : '#F8FAFC',
+                  borderColor: selectedFile ? '#2563EB' : '#CBD5E1',
+                  transition: 'all 0.2s ease',
+                  mb: 3,
+                  '&:hover': {
+                    borderColor: '#2563EB',
+                    bgcolor: '#F8FAFC',
+                  }
+                }}
+              >
+                <input
+                  accept=".xml"
+                  style={{ display: 'none' }}
+                  id="xml-upload"
+                  type="file"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedFile(e.target.files[0]);
+                    }
+                  }}
+                />
+                <label htmlFor="xml-upload" style={{ cursor: 'pointer', display: 'block' }}>
+                  <Description sx={{ fontSize: 48, color: selectedFile ? '#2563EB' : '#94A3B8', mb: 2 }} />
+                  <Typography variant="body1" fontWeight="600" gutterBottom>
+                    {selectedFile ? selectedFile.name : 'Selecciona un archivo XML'}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                    {selectedFile ? 'Archivo listo para procesar' : 'Arrastra aquí o haz clic para seleccionar'}
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    component="span" 
+                    size="medium" 
+                    startIcon={<FileUpload />}
+                    sx={{ textTransform: 'none', mt: 1 }}
                   >
-                    <input
-                      accept=".xml"
-                      style={{ display: 'none' }}
-                      id="xml-upload"
-                      type="file"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setSelectedFile(e.target.files[0]);
-                        }
-                      }}
-                    />
-                    <label htmlFor="xml-upload">
-                      <Button variant="outlined" component="span" size="small" sx={{ textTransform: 'none', mb: 1 }}>
-                        Elegir XML
-                      </Button>
-                    </label>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {selectedFile ? selectedFile.name : 'Requerido'}
-                    </Typography>
-                  </Box>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Box
-                    sx={{
-                      border: '2px dashed #CBD5E1',
-                      borderRadius: 2,
-                      p: 3,
-                      textAlign: 'center',
-                      bgcolor: selectedPDF ? '#F0FDF4' : '#F8FAFC',
-                      borderColor: selectedPDF ? '#10B981' : '#CBD5E1',
-                    }}
-                  >
-                    <input
-                      accept=".pdf"
-                      style={{ display: 'none' }}
-                      id="pdf-upload"
-                      type="file"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setSelectedPDF(e.target.files[0]);
-                        }
-                      }}
-                    />
-                    <label htmlFor="pdf-upload">
-                      <Button variant="outlined" component="span" size="small" sx={{ textTransform: 'none', mb: 1 }}>
-                        Elegir PDF
-                      </Button>
-                    </label>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {selectedPDF ? selectedPDF.name : 'Opcional'}
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
+                    {selectedFile ? 'Cambiar archivo' : 'Seleccionar archivo XML'}
+                  </Button>
+                </label>
+              </Box>
 
               <Button
                 variant="contained"
@@ -463,10 +428,21 @@ export default function EmpresaDetailPage() {
                 size="large"
                 onClick={handleUploadPDF}
                 disabled={!selectedFile || uploading}
-                sx={{ textTransform: 'none', boxShadow: 'none' }}
+                startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <Check />}
+                sx={{ 
+                  textTransform: 'none', 
+                  boxShadow: 'none',
+                  py: 1.5,
+                  fontSize: '1rem',
+                  fontWeight: 600
+                }}
               >
                 {uploading ? 'Procesando factura...' : 'Subir y Procesar Factura'}
               </Button>
+
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2, textAlign: 'center' }}>
+                💡 Nota: El archivo PDF se puede agregar posteriormente desde la tabla de facturas
+              </Typography>
             </CardContent>
           </Card>
         </TabPanel>
