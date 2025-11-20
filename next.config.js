@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Deshabilitar ESLint durante builds en Vercel
   eslint: {
     ignoreDuringBuilds: true,
   },
