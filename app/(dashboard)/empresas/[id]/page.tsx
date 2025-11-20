@@ -471,103 +471,233 @@ export default function EmpresaDetailPage() {
           </Card>
         </TabPanel>
 
-        {/* Tab 1: Dashboard */}
+        {/* Tab 1: Todas las Facturas */}
         <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Deuda Total
-                      </Typography>
-                      <Typography variant="h4" fontWeight="700" color="error.main">
-                        $ 118.403,64
-                      </Typography>
-                    </Box>
-                    <AttachMoney sx={{ color: 'error.main', fontSize: 32 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6" fontWeight="600">
+                  Todas las Facturas
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  startIcon={<GetApp />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => handleExportToExcel(todasFacturas, `todas-facturas-${empresa?.nombre || 'empresa'}.xlsx`)}
+                >
+                  Exportar a Excel
+                </Button>
+              </Box>
 
-            <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Total Facturas
-                      </Typography>
-                      <Typography variant="h4" fontWeight="700" color="primary.main">
-                        34
-                      </Typography>
-                    </Box>
-                    <Receipt sx={{ color: 'primary.main', fontSize: 32 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Pendientes
-                      </Typography>
-                      <Typography variant="h4" fontWeight="700" color="error.main">
-                        4
-                      </Typography>
-                    </Box>
-                    <TrendingUp sx={{ color: 'error.main', fontSize: 32 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Pagadas
-                      </Typography>
-                      <Typography variant="h4" fontWeight="700" color="success.main">
-                        30
-                      </Typography>
-                    </Box>
-                    <CheckCircle sx={{ color: 'success.main', fontSize: 32 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
-                <CardContent>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    Resumen por Proveedor
+              {loadingFacturas ? (
+                <Typography>Cargando...</Typography>
+              ) : todasFacturas.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 6 }}>
+                  <Receipt sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    No hay facturas registradas
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Información detallada de facturas por proveedor
+                </Box>
+              ) : (
+                <Box sx={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          Nº Factura
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          Proveedor
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          Fecha
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          Monto
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          Estado
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          Archivos
+                        </th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {todasFacturas.map((factura, index) => (
+                        <tr 
+                          key={factura._id || index}
+                          style={{ 
+                            borderBottom: '1px solid #F1F5F9',
+                            backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F8FAFC'
+                          }}
+                        >
+                          <td style={{ padding: '16px' }}>
+                            <Typography variant="body2" fontWeight="600">
+                              {factura.numero_factura || 'N/A'}
+                            </Typography>
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <Typography variant="body2">
+                              {factura.cfdi?.emisor?.nombre || 'Sin proveedor'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              RFC: {factura.cfdi?.emisor?.rfc || 'N/A'}
+                            </Typography>
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {new Date(factura.cfdi?.fecha || factura.created_at).toLocaleDateString()}
+                            </Typography>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'right' }}>
+                            <Typography variant="body2" fontWeight="600">
+                              $ {Number(factura.cfdi?.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <Chip 
+                              label={factura.estado_pago === 'pagado' ? 'Pagada' : factura.estado_pago === 'vencido' ? 'Vencida' : 'Pendiente'}
+                              size="small"
+                              sx={{
+                                bgcolor: factura.estado_pago === 'pagado' ? '#D1FAE5' : factura.estado_pago === 'vencido' ? '#FEE2E2' : '#FEF3C7',
+                                color: factura.estado_pago === 'pagado' ? '#065F46' : factura.estado_pago === 'vencido' ? '#DC2626' : '#D97706',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                              }}
+                            />
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                              {factura.archivo_xml && (
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#10B981' }}
+                                  onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
+                                  title="Descargar XML"
+                                >
+                                  <Description fontSize="small" />
+                                </IconButton>
+                              )}
+                              {factura.archivo_pdf && (
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#3B82F6' }}
+                                  onClick={() => handleViewPDF(factura.archivo_pdf)}
+                                  title="Ver PDF"
+                                >
+                                  <Visibility fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Stack>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                              {factura.estado_pago !== 'pagado' && (
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#10B981' }}
+                                  onClick={() => handleMarkAsPaid(factura._id)}
+                                  title="Marcar como pagada"
+                                >
+                                  <Check fontSize="small" />
+                                </IconButton>
+                              )}
+                              {factura.estado_pago === 'pagado' && (
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#F59E0B' }}
+                                  onClick={() => handleMarkAsPending(factura._id)}
+                                  title="Marcar como pendiente"
+                                >
+                                  <Undo fontSize="small" />
+                                </IconButton>
+                              )}
+                              {currentUser?.role === 'admin' && (
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#EF4444' }}
+                                  onClick={() => handleDeleteInvoice(factura._id)}
+                                  title="Eliminar"
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Stack>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </TabPanel>
+
+        {/* Tab 2: Facturas Pendientes con Dashboard */}
+        <TabPanel value={tabValue} index={2}>
+          {/* Mini Dashboard Pendientes */}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#FEF2F2' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Deuda Total Pendiente
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="error.main">
+                    $ {facturas.reduce((sum, f) => sum + Number(f.cfdi?.total || 0), 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#FEF3C7' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Facturas Pendientes
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="#D97706">
+                    {facturas.length}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#FEF2F2' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Facturas Vencidas
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="error.main">
+                    {facturas.filter(f => f.estado_pago === 'vencido').length}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#F0FDF4' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Proveedores con Deuda
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="success.main">
+                    {new Set(facturas.map(f => f.cfdi?.emisor?.rfc)).size}
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
           </Grid>
-        </TabPanel>
 
-        {/* Tab 2: Facturas */}
-        <TabPanel value={tabValue} index={2}>
           <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h6" fontWeight="600">
-                  Lista de Facturas
+                  Facturas Pendientes
                 </Typography>
                 <Button 
                   variant="outlined" 
@@ -584,21 +714,18 @@ export default function EmpresaDetailPage() {
                 <Typography>Cargando...</Typography>
               ) : facturas.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <Receipt sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
+                  <CheckCircle sx={{ fontSize: 64, color: '#10B981', mb: 2 }} />
                   <Typography variant="body1" color="text.secondary">
-                    No hay facturas pendientes
+                    ¡No hay facturas pendientes! Todo al día.
                   </Typography>
                 </Box>
               ) : (
                 <Box sx={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
+                      <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
                         <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
                           Nº Factura
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Nº Contrato
                         </th>
                         <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
                           Proveedor
@@ -623,8 +750,11 @@ export default function EmpresaDetailPage() {
                     <tbody>
                       {facturas.map((factura, index) => (
                         <tr 
-                          key={index}
-                          style={{ borderBottom: '1px solid #F1F5F9' }}
+                          key={factura._id || index}
+                          style={{ 
+                            borderBottom: '1px solid #F1F5F9',
+                            backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F8FAFC'
+                          }}
                         >
                           <td style={{ padding: '16px' }}>
                             <Typography variant="body2" fontWeight="600">
@@ -632,13 +762,11 @@ export default function EmpresaDetailPage() {
                             </Typography>
                           </td>
                           <td style={{ padding: '16px' }}>
-                            <Typography variant="body2" color="text.secondary">
-                              N/A
-                            </Typography>
-                          </td>
-                          <td style={{ padding: '16px' }}>
                             <Typography variant="body2">
                               {factura.cfdi?.emisor?.nombre || 'Sin proveedor'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              RFC: {factura.cfdi?.emisor?.rfc || 'N/A'}
                             </Typography>
                           </td>
                           <td style={{ padding: '16px' }}>
@@ -648,12 +776,12 @@ export default function EmpresaDetailPage() {
                           </td>
                           <td style={{ padding: '16px', textAlign: 'right' }}>
                             <Typography variant="body2" fontWeight="600">
-                              $ {Number(factura.cfdi?.total || 0).toLocaleString()}
+                              $ {Number(factura.cfdi?.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Typography>
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Chip 
-                              label={factura.estado_pago === 'pendiente' ? 'Pendiente' : 'Vencido'}
+                              label={factura.estado_pago === 'vencido' ? 'Vencida' : 'Pendiente'}
                               size="small"
                               sx={{
                                 bgcolor: factura.estado_pago === 'vencido' ? '#FEE2E2' : '#FEF3C7',
@@ -697,22 +825,6 @@ export default function EmpresaDetailPage() {
                               >
                                 <Check fontSize="small" />
                               </IconButton>
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: '#64748B' }}
-                                onClick={() => factura.archivo_pdf && handleDownloadFile(factura.archivo_pdf, `${factura.numero_factura}.pdf`)}
-                                title="Descargar PDF"
-                              >
-                                <Download fontSize="small" />
-                              </IconButton>
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: '#3B82F6' }}
-                                onClick={() => factura.archivo_pdf && handleViewPDF(factura.archivo_pdf)}
-                                title="Ver detalles"
-                              >
-                                <Description fontSize="small" />
-                              </IconButton>
                               {currentUser?.role === 'admin' && (
                                 <IconButton 
                                   size="small" 
@@ -735,8 +847,60 @@ export default function EmpresaDetailPage() {
           </Card>
         </TabPanel>
 
-        {/* Tab 3: Facturas Pagadas */}
+        {/* Tab 3: Facturas Pagadas con Dashboard */}
         <TabPanel value={tabValue} index={3}>
+          {/* Mini Dashboard Pagadas */}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#F0FDF4' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Total Pagado
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="success.main">
+                    $ {facturasPagadas.reduce((sum, f) => sum + Number(f.cfdi?.total || 0), 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#EFF6FF' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Facturas Pagadas
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="#2563EB">
+                    {facturasPagadas.length}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#F0FDF4' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Promedio por Factura
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="success.main">
+                    $ {facturasPagadas.length > 0 ? (facturasPagadas.reduce((sum, f) => sum + Number(f.cfdi?.total || 0), 0) / facturasPagadas.length).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#EFF6FF' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Proveedores Atendidos
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="#2563EB">
+                    {new Set(facturasPagadas.map(f => f.cfdi?.emisor?.rfc)).size}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
           <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -767,12 +931,9 @@ export default function EmpresaDetailPage() {
                 <Box sx={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
+                      <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
                         <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
                           Nº Factura
-                        </th>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                          Nº Contrato
                         </th>
                         <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
                           Proveedor
@@ -794,8 +955,11 @@ export default function EmpresaDetailPage() {
                     <tbody>
                       {facturasPagadas.map((factura, index) => (
                         <tr 
-                          key={index}
-                          style={{ borderBottom: '1px solid #F1F5F9' }}
+                          key={factura._id || index}
+                          style={{ 
+                            borderBottom: '1px solid #F1F5F9',
+                            backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F8FAFC'
+                          }}
                         >
                           <td style={{ padding: '16px' }}>
                             <Typography variant="body2" fontWeight="600">
@@ -803,13 +967,11 @@ export default function EmpresaDetailPage() {
                             </Typography>
                           </td>
                           <td style={{ padding: '16px' }}>
-                            <Typography variant="body2" color="text.secondary">
-                              N/A
-                            </Typography>
-                          </td>
-                          <td style={{ padding: '16px' }}>
                             <Typography variant="body2">
                               {factura.cfdi?.emisor?.nombre || 'Sin proveedor'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              RFC: {factura.cfdi?.emisor?.rfc || 'N/A'}
                             </Typography>
                           </td>
                           <td style={{ padding: '16px' }}>
@@ -819,18 +981,28 @@ export default function EmpresaDetailPage() {
                           </td>
                           <td style={{ padding: '16px', textAlign: 'right' }}>
                             <Typography variant="body2" fontWeight="600" color="success.main">
-                              $ {Number(factura.cfdi?.total || 0).toLocaleString()}
+                              $ {Number(factura.cfdi?.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Typography>
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={1} justifyContent="center">
                               {factura.archivo_xml && (
-                                <IconButton size="small" sx={{ color: '#10B981' }}>
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#10B981' }}
+                                  onClick={() => handleDownloadFile(factura.archivo_xml, `${factura.numero_factura}.xml`)}
+                                  title="Descargar XML"
+                                >
                                   <Description fontSize="small" />
                                 </IconButton>
                               )}
                               {factura.archivo_pdf && (
-                                <IconButton size="small" sx={{ color: '#3B82F6' }}>
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#3B82F6' }}
+                                  onClick={() => handleViewPDF(factura.archivo_pdf)}
+                                  title="Ver PDF"
+                                >
                                   <Visibility fontSize="small" />
                                 </IconButton>
                               )}
@@ -846,32 +1018,6 @@ export default function EmpresaDetailPage() {
                               >
                                 <Undo fontSize="small" />
                               </IconButton>
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: '#64748B' }}
-                                onClick={() => factura.archivo_pdf && handleDownloadFile(factura.archivo_pdf, `${factura.numero_factura}.pdf`)}
-                                title="Descargar PDF"
-                              >
-                                <Download fontSize="small" />
-                              </IconButton>
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: '#3B82F6' }}
-                                onClick={() => factura.archivo_pdf && handleViewPDF(factura.archivo_pdf)}
-                                title="Ver detalles"
-                              >
-                                <Description fontSize="small" />
-                              </IconButton>
-                              {currentUser?.role === 'admin' && (
-                                <IconButton 
-                                  size="small" 
-                                  sx={{ color: '#EF4444' }}
-                                  onClick={() => handleDeleteInvoice(factura._id)}
-                                  title="Eliminar"
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              )}
                             </Stack>
                           </td>
                         </tr>
@@ -884,193 +1030,408 @@ export default function EmpresaDetailPage() {
           </Card>
         </TabPanel>
 
-        {/* Tab 4: Resumen */}
+        {/* Tab 4: Resumen de Facturación con Filtros */}
         <TabPanel value={tabValue} index={4}>
-          <Grid container spacing={3}>
-            {/* Card de Resumen Financiero */}
-            <Grid item xs={12}>
-              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
+          {/* Filtros */}
+          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight="600" gutterBottom>
+                Filtros
+              </Typography>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Buscar por Proveedor"
+                    placeholder="Nombre o RFC"
+                    value={filtroProveedor}
+                    onChange={(e) => setFiltroProveedor(e.target.value)}
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: 2,
+                        bgcolor: '#FFFFFF'
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="Fecha Inicio"
+                    value={filtroFechaInicio}
+                    onChange={(e) => setFiltroFechaInicio(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: 2,
+                        bgcolor: '#FFFFFF'
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="Fecha Fin"
+                    value={filtroFechaFin}
+                    onChange={(e) => setFiltroFechaFin(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: 2,
+                        bgcolor: '#FFFFFF'
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Dashboard Comparativo */}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#FEF2F2' }}>
                 <CardContent>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    Resumen Financiero General
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Deuda Total Pendiente
                   </Typography>
-                  <Grid container spacing={3} sx={{ mt: 1 }}>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ p: 2, bgcolor: '#FEF2F2', borderRadius: 2 }}>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Deuda Total Pendiente
-                        </Typography>
-                        <Typography variant="h4" fontWeight="700" color="error.main">
-                          $ {facturas.reduce((sum, f) => sum + (Number(f.cfdi?.total) || 0), 0).toLocaleString()}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ p: 2, bgcolor: '#F0F9FF', borderRadius: 2 }}>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Total Facturas Pendientes
-                        </Typography>
-                        <Typography variant="h4" fontWeight="700" color="primary.main">
-                          {facturas.length}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ p: 2, bgcolor: '#F0FDF4', borderRadius: 2 }}>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Facturas Pagadas
-                        </Typography>
-                        <Typography variant="h4" fontWeight="700" color="success.main">
-                          {facturasPagadas.length}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ p: 2, bgcolor: '#FAFAFA', borderRadius: 2 }}>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Total General
-                        </Typography>
-                        <Typography variant="h4" fontWeight="700">
-                          {facturas.length + facturasPagadas.length}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
+                  <Typography variant="h5" fontWeight="700" color="error.main">
+                    $ {(() => {
+                      let filtered = facturas;
+                      if (filtroProveedor) {
+                        filtered = filtered.filter(f => 
+                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
+                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
+                        );
+                      }
+                      if (filtroFechaInicio) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
+                      }
+                      if (filtroFechaFin) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) <= new Date(filtroFechaFin));
+                      }
+                      return filtered.reduce((sum, f) => sum + Number(f.cfdi?.total || 0), 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    })()}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
-
-            {/* Tabla de Resumen por Proveedor */}
-            <Grid item xs={12}>
-              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#F0FDF4' }}>
                 <CardContent>
-                  <Typography variant="h6" fontWeight="600" gutterBottom sx={{ mb: 3 }}>
-                    Deuda por Proveedor
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Total Pagado
                   </Typography>
-                  
-                  {loadingFacturas ? (
-                    <Typography>Cargando...</Typography>
-                  ) : (() => {
-                    // Agrupar facturas pendientes por proveedor
-                    const proveedoresMap = new Map<string, { nombre: string; rfc: string; total: number; count: number }>();
-                    
-                    facturas.forEach((factura) => {
-                      const nombre = factura.cfdi?.emisor?.nombre || 'Sin nombre';
-                      const rfc = factura.cfdi?.emisor?.rfc || 'Sin RFC';
-                      const key = rfc;
-                      
-                      if (proveedoresMap.has(key)) {
-                        const existing = proveedoresMap.get(key)!;
-                        existing.total += Number(factura.cfdi?.total || 0);
-                        existing.count += 1;
-                      } else {
-                        proveedoresMap.set(key, {
-                          nombre,
-                          rfc,
-                          total: Number(factura.cfdi?.total || 0),
-                          count: 1
-                        });
+                  <Typography variant="h5" fontWeight="700" color="success.main">
+                    $ {(() => {
+                      let filtered = facturasPagadas;
+                      if (filtroProveedor) {
+                        filtered = filtered.filter(f => 
+                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
+                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
+                        );
                       }
-                    });
-
-                    const proveedores = Array.from(proveedoresMap.values()).sort((a, b) => b.total - a.total);
-
-                    return proveedores.length === 0 ? (
-                      <Box sx={{ textAlign: 'center', py: 6 }}>
-                        <CheckCircle sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
-                        <Typography variant="body1" color="text.secondary">
-                          No hay deudas pendientes
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Box sx={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                          <thead>
-                            <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
-                              <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                                Proveedor
-                              </th>
-                              <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                                RFC
-                              </th>
-                              <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                                Cantidad Facturas
-                              </th>
-                              <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
-                                Deuda Total
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {proveedores.map((proveedor, index) => (
-                              <tr 
-                                key={index}
-                                style={{ 
-                                  borderBottom: '1px solid #F1F5F9',
-                                  backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F8FAFC'
-                                }}
-                              >
-                                <td style={{ padding: '16px' }}>
-                                  <Typography variant="body2" fontWeight="600">
-                                    {proveedor.nombre}
-                                  </Typography>
-                                </td>
-                                <td style={{ padding: '16px' }}>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {proveedor.rfc}
-                                  </Typography>
-                                </td>
-                                <td style={{ padding: '16px', textAlign: 'center' }}>
-                                  <Chip 
-                                    label={proveedor.count} 
-                                    size="small"
-                                    sx={{ 
-                                      bgcolor: '#DBEAFE', 
-                                      color: '#1E40AF',
-                                      fontWeight: 600 
-                                    }}
-                                  />
-                                </td>
-                                <td style={{ padding: '16px', textAlign: 'right' }}>
-                                  <Typography variant="body1" fontWeight="700" color="error.main">
-                                    $ {proveedor.total.toLocaleString()}
-                                  </Typography>
-                                </td>
-                              </tr>
-                            ))}
-                            {/* Fila de Total */}
-                            <tr style={{ borderTop: '2px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
-                              <td colSpan={2} style={{ padding: '16px' }}>
-                                <Typography variant="body1" fontWeight="700">
-                                  TOTAL
-                                </Typography>
-                              </td>
-                              <td style={{ padding: '16px', textAlign: 'center' }}>
-                                <Chip 
-                                  label={facturas.length} 
-                                  size="small"
-                                  sx={{ 
-                                    bgcolor: '#1E40AF', 
-                                    color: '#FFFFFF',
-                                    fontWeight: 600 
-                                  }}
-                                />
-                              </td>
-                              <td style={{ padding: '16px', textAlign: 'right' }}>
-                                <Typography variant="h6" fontWeight="700" color="error.main">
-                                  $ {proveedores.reduce((sum, p) => sum + p.total, 0).toLocaleString()}
-                                </Typography>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </Box>
-                    );
-                  })()}
+                      if (filtroFechaInicio) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
+                      }
+                      if (filtroFechaFin) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) <= new Date(filtroFechaFin));
+                      }
+                      return filtered.reduce((sum, f) => sum + Number(f.cfdi?.total || 0), 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    })()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#FEF3C7' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Facturas Pendientes
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="#D97706">
+                    {(() => {
+                      let filtered = facturas;
+                      if (filtroProveedor) {
+                        filtered = filtered.filter(f => 
+                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
+                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
+                        );
+                      }
+                      if (filtroFechaInicio) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
+                      }
+                      if (filtroFechaFin) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) <= new Date(filtroFechaFin));
+                      }
+                      return filtered.length;
+                    })()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, bgcolor: '#EFF6FF' }}>
+                <CardContent>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                    Facturas Pagadas
+                  </Typography>
+                  <Typography variant="h5" fontWeight="700" color="#2563EB">
+                    {(() => {
+                      let filtered = facturasPagadas;
+                      if (filtroProveedor) {
+                        filtered = filtered.filter(f => 
+                          (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
+                          (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
+                        );
+                      }
+                      if (filtroFechaInicio) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio));
+                      }
+                      if (filtroFechaFin) {
+                        filtered = filtered.filter(f => new Date(f.cfdi?.fecha || f.created_at) <= new Date(filtroFechaFin));
+                      }
+                      return filtered.length;
+                    })()}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
           </Grid>
+
+          {/* Resumen por Proveedor */}
+          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6" fontWeight="600">
+                  Resumen por Proveedor
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  startIcon={<GetApp />}
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => handleExportToExcel(todasFacturas, `resumen-completo-${empresa?.nombre || 'empresa'}.xlsx`)}
+                >
+                  Exportar Resumen
+                </Button>
+              </Box>
+              
+              {loadingFacturas ? (
+                <Typography>Cargando...</Typography>
+              ) : (() => {
+                // Filtrar facturas
+                let facturasFiltradas = todasFacturas;
+                if (filtroProveedor) {
+                  facturasFiltradas = facturasFiltradas.filter(f => 
+                    (f.cfdi?.emisor?.nombre || '').toLowerCase().includes(filtroProveedor.toLowerCase()) ||
+                    (f.cfdi?.emisor?.rfc || '').toLowerCase().includes(filtroProveedor.toLowerCase())
+                  );
+                }
+                if (filtroFechaInicio) {
+                  facturasFiltradas = facturasFiltradas.filter(f => 
+                    new Date(f.cfdi?.fecha || f.created_at) >= new Date(filtroFechaInicio)
+                  );
+                }
+                if (filtroFechaFin) {
+                  facturasFiltradas = facturasFiltradas.filter(f => 
+                    new Date(f.cfdi?.fecha || f.created_at) <= new Date(filtroFechaFin)
+                  );
+                }
+
+                // Agrupar por proveedor
+                const proveedoresMap = new Map<string, { 
+                  nombre: string; 
+                  rfc: string; 
+                  totalPendiente: number; 
+                  totalPagado: number;
+                  countPendiente: number;
+                  countPagado: number;
+                }>();
+                
+                facturasFiltradas.forEach((factura) => {
+                  const nombre = factura.cfdi?.emisor?.nombre || 'Sin nombre';
+                  const rfc = factura.cfdi?.emisor?.rfc || 'Sin RFC';
+                  const key = rfc;
+                  const total = Number(factura.cfdi?.total || 0);
+                  const esPagada = factura.estado_pago === 'pagado';
+                  
+                  if (proveedoresMap.has(key)) {
+                    const existing = proveedoresMap.get(key)!;
+                    if (esPagada) {
+                      existing.totalPagado += total;
+                      existing.countPagado += 1;
+                    } else {
+                      existing.totalPendiente += total;
+                      existing.countPendiente += 1;
+                    }
+                  } else {
+                    proveedoresMap.set(key, {
+                      nombre,
+                      rfc,
+                      totalPendiente: esPagada ? 0 : total,
+                      totalPagado: esPagada ? total : 0,
+                      countPendiente: esPagada ? 0 : 1,
+                      countPagado: esPagada ? 1 : 0
+                    });
+                  }
+                });
+
+                const proveedores = Array.from(proveedoresMap.values()).sort((a, b) => 
+                  (b.totalPendiente + b.totalPagado) - (a.totalPendiente + a.totalPagado)
+                );
+
+                return proveedores.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <Receipt sx={{ fontSize: 64, color: '#CBD5E1', mb: 2 }} />
+                    <Typography variant="body1" color="text.secondary">
+                      No hay facturas que coincidan con los filtros
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                            Proveedor
+                          </th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                            RFC
+                          </th>
+                          <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                            Pendientes
+                          </th>
+                          <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                            Deuda Pendiente
+                          </th>
+                          <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                            Pagadas
+                          </th>
+                          <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                            Total Pagado
+                          </th>
+                          <th style={{ padding: '12px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 600, color: '#64748B' }}>
+                            Total General
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {proveedores.map((proveedor, index) => (
+                          <tr 
+                            key={index}
+                            style={{ 
+                              borderBottom: '1px solid #F1F5F9',
+                              backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F8FAFC'
+                            }}
+                          >
+                            <td style={{ padding: '16px' }}>
+                              <Typography variant="body2" fontWeight="600">
+                                {proveedor.nombre}
+                              </Typography>
+                            </td>
+                            <td style={{ padding: '16px' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                {proveedor.rfc}
+                              </Typography>
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'center' }}>
+                              <Chip 
+                                label={proveedor.countPendiente} 
+                                size="small"
+                                sx={{ 
+                                  bgcolor: proveedor.countPendiente > 0 ? '#FEF3C7' : '#F1F5F9', 
+                                  color: proveedor.countPendiente > 0 ? '#D97706' : '#64748B',
+                                  fontWeight: 600 
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right' }}>
+                              <Typography variant="body2" fontWeight="600" color={proveedor.totalPendiente > 0 ? 'error.main' : 'text.secondary'}>
+                                $ {proveedor.totalPendiente.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </Typography>
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'center' }}>
+                              <Chip 
+                                label={proveedor.countPagado} 
+                                size="small"
+                                sx={{ 
+                                  bgcolor: proveedor.countPagado > 0 ? '#D1FAE5' : '#F1F5F9', 
+                                  color: proveedor.countPagado > 0 ? '#065F46' : '#64748B',
+                                  fontWeight: 600 
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right' }}>
+                              <Typography variant="body2" fontWeight="600" color={proveedor.totalPagado > 0 ? 'success.main' : 'text.secondary'}>
+                                $ {proveedor.totalPagado.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </Typography>
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right' }}>
+                              <Typography variant="body1" fontWeight="700">
+                                $ {(proveedor.totalPendiente + proveedor.totalPagado).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </Typography>
+                            </td>
+                          </tr>
+                        ))}
+                        {/* Fila de Totales */}
+                        <tr style={{ borderTop: '2px solid #E2E8F0', backgroundColor: '#F1F5F9' }}>
+                          <td colSpan={2} style={{ padding: '16px' }}>
+                            <Typography variant="body1" fontWeight="700">
+                              TOTALES
+                            </Typography>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <Chip 
+                              label={proveedores.reduce((sum, p) => sum + p.countPendiente, 0)} 
+                              size="small"
+                              sx={{ 
+                                bgcolor: '#D97706', 
+                                color: '#FFFFFF',
+                                fontWeight: 700 
+                              }}
+                            />
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'right' }}>
+                            <Typography variant="h6" fontWeight="700" color="error.main">
+                              $ {proveedores.reduce((sum, p) => sum + p.totalPendiente, 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <Chip 
+                              label={proveedores.reduce((sum, p) => sum + p.countPagado, 0)} 
+                              size="small"
+                              sx={{ 
+                                bgcolor: '#10B981', 
+                                color: '#FFFFFF',
+                                fontWeight: 700 
+                              }}
+                            />
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'right' }}>
+                            <Typography variant="h6" fontWeight="700" color="success.main">
+                              $ {proveedores.reduce((sum, p) => sum + p.totalPagado, 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'right' }}>
+                            <Typography variant="h5" fontWeight="700">
+                              $ {proveedores.reduce((sum, p) => sum + p.totalPendiente + p.totalPagado, 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </Box>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </TabPanel>
       </Box>
     </Box>
