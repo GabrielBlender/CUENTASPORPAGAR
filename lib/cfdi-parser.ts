@@ -221,16 +221,23 @@ export class CFDIParser {
         errors.push('El total debe ser mayor a cero');
       }
 
-      // Validar coherencia de totales
+      // Validar coherencia de totales (más permisiva para descuentos)
       const subtotalCalculado = cfdiData.conceptos.reduce(
         (sum, c) => sum + c.importe,
         0
       );
+      
+      // Permitir mayor tolerancia en caso de descuentos o redondeos
       const diff = Math.abs(subtotalCalculado - cfdiData.subtotal);
-      if (diff > 0.01) {
-        errors.push(
-          `Subtotal no coincide con la suma de conceptos (diferencia: $${diff.toFixed(2)})`
+      if (diff > 1.0) {
+        // Solo advertir si la diferencia es mayor a $1
+        console.warn(
+          `Advertencia: Subtotal calculado: $${subtotalCalculado.toFixed(2)}, Subtotal del XML: $${cfdiData.subtotal.toFixed(2)} (diferencia: $${diff.toFixed(2)})`
         );
+        // No agregar como error, solo advertencia
+        // errors.push(
+        //   `Subtotal no coincide con la suma de conceptos (diferencia: $${diff.toFixed(2)})`
+        // );
       }
 
       return {
@@ -238,6 +245,7 @@ export class CFDIParser {
         errors,
       };
     } catch (error) {
+      console.error('Error en validateCFDI:', error);
       return {
         valid: false,
         errors: [

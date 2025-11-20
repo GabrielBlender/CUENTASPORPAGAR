@@ -29,15 +29,30 @@ export async function POST(request: NextRequest) {
     const xmlContent = await xmlFile.text();
 
     // Parsear XML CFDI
+    console.log('Validando CFDI...');
     const validation = cfdiParser.validateCFDI(xmlContent);
+    
     if (!validation.valid) {
+      console.error('Errores de validación:', validation.errors);
       return NextResponse.json(
-        { error: 'XML inválido', details: validation.errors },
+        { 
+          error: 'XML inválido', 
+          details: validation.errors,
+          message: validation.errors.join(', ')
+        },
         { status: 400 }
       );
     }
 
+    console.log('CFDI válido, parseando datos...');
     const cfdiData = cfdiParser.parseXML(xmlContent);
+    console.log('Datos parseados:', {
+      folio: cfdiData.folio,
+      serie: cfdiData.serie,
+      uuid: cfdiData.timbreFiscalDigital.uuid,
+      emisor: cfdiData.emisor.nombre,
+      total: cfdiData.total
+    });
 
     // Verificar que el UUID no esté duplicado
     const db = await getDatabase();
