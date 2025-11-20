@@ -14,14 +14,11 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Contraseña debe tener al menos 6 caracteres'),
 });
 
-// Empresa
-export const empresaSchema = z.object({
+// Empresa - Base schema sin transformaciones (para .partial())
+const empresaBaseSchema = z.object({
   nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres').optional(),
   razon_social: z.string().min(3, 'La razón social debe tener al menos 3 caracteres').optional(),
-  rfc: z
-    .string()
-    .min(1, 'RFC/RUT es requerido')
-    .transform((val) => val.toUpperCase()),
+  rfc: z.string().min(1, 'RFC/RUT es requerido'),
   direccion: z.union([
     z.object({
       calle: z.string().min(1, 'Calle es requerida'),
@@ -47,10 +44,23 @@ export const empresaSchema = z.object({
   email: z.string().email('Email inválido').optional(),
   telefono: z.string().optional(),
   activa: z.boolean().optional(),
-}).refine((data) => data.nombre || data.razon_social, {
-  message: "Debe proporcionar 'nombre' o 'razon_social'",
-  path: ['nombre'],
 });
+
+// Empresa - Schema completo con transformaciones
+export const empresaSchema = empresaBaseSchema
+  .extend({
+    rfc: z
+      .string()
+      .min(1, 'RFC/RUT es requerido')
+      .transform((val) => val.toUpperCase()),
+  })
+  .refine((data) => data.nombre || data.razon_social, {
+    message: "Debe proporcionar 'nombre' o 'razon_social'",
+    path: ['nombre'],
+  });
+
+// Schema para updates parciales
+export const empresaUpdateSchema = empresaBaseSchema.partial();
 
 // Factura
 export const invoiceSchema = z.object({

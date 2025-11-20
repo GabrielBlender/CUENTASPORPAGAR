@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import { getCurrentUser } from '@/lib/auth';
-import { empresaSchema } from '@/lib/validators';
+import { empresaSchema, empresaUpdateSchema } from '@/lib/validators';
 import { ObjectId } from 'mongodb';
 
 // GET - Obtener una empresa por ID
@@ -47,7 +47,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const data = empresaSchema.partial().parse(body);
+    const data = empresaUpdateSchema.parse(body);
 
     const db = await getDatabase();
     const result = await db.collection('empresas').findOneAndUpdate(
