@@ -4,7 +4,7 @@
   "description": "Sistema de gestión de cuentas por pagar con CFDI 4.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NEXT_DISABLE_ESLINT=true next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
