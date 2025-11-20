@@ -112,3 +112,82 @@ export async function GET(
     );
   }
 }
+
+// PUT - Actualizar factura (cambiar estado de pago)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Verificar autenticación
+    const cookieStore = cookies();
+    const token = cookieStore.get('token')?.value;
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const payload = await verifyToken(token);
+    
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Token inválido' },
+        { status: 401 }
+      );
+    }
+
+    const db = await getDatabase();
+    const invoiceId = params.id;
+    const body = await request.json();
+    const { estado_pago, notas } = body;
+
+    // Construir el objeto de actualización
+    const updateData: any = {
+      updated_at: new Date(),
+    };
+
+    if (estado_pago) {
+      updateData.estado_pago = estado_pago;
+      // Agregar a la actividad
+      updateData.$push = {
+        actividad: {
+          fecha: new Date(),
+          usuario: payload.nombre || payload.email,
+          accion: estado_pago === 'pagado' ? 'Marcado como pagado' : 'Cambio de estado',
+          detalle: `Estado cambiado a: ${estado_pago}`,
+        },
+      };
+    }
+
+    if (notas !== undefined) {
+      updateData.notas = notas;
+    }
+
+    const result = await db.collection('invoices').findOneAndUpdate(
+      { _id: new ObjectId(invoiceId) },
+      { $set: updateData, ...(updateData.$push && { $push: updateData.$push }) },
+      { returnDocument: 'after' }
+    );
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Factura no encontrada' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { message: 'Factura actualizada exitosamente', data: result },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error al actualizar factura:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
+  }
+}

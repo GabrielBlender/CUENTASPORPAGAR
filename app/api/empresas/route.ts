@@ -19,9 +19,15 @@ export async function GET() {
       .sort({ nombre: 1 })
       .toArray();
 
+    // Serializar _id a string para que Next.js lo maneje correctamente
+    const empresasSerializadas = empresas.map((empresa) => ({
+      ...empresa,
+      _id: empresa._id.toString(),
+    }));
+
     return NextResponse.json({
       success: true,
-      data: empresas.map((e) => ({ ...e, id: e._id.toString(), _id: undefined })),
+      data: empresasSerializadas,
     });
   } catch (error) {
     console.error('Get empresas error:', error);

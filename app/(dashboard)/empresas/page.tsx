@@ -140,32 +140,6 @@ export default function EmpresasPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F8FAFC', p: 4 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ bgcolor: '#2563EB', width: 48, height: 48 }}>
-            {currentUser?.nombre?.charAt(0) || 'U'}
-          </Avatar>
-          <Box>
-            <Typography variant="h6" fontWeight="700" color="text.primary">
-              {currentUser?.nombre || 'Usuario'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
-            </Typography>
-          </Box>
-        </Box>
-        <Button
-          variant="outlined"
-          color="error"
-          onClick={handleLogout}
-          startIcon={<ArrowForward />}
-          sx={{ textTransform: 'none' }}
-        >
-          Cerrar Sesión
-        </Button>
-      </Box>
-
       {/* Title */}
       <Box sx={{ textAlign: 'center', mb: 5 }}>
         <Typography variant="h4" fontWeight="700" gutterBottom color="text.primary">
@@ -194,10 +168,11 @@ export default function EmpresasPage() {
         )}
       </Box>
 
-      {/* Grid de Empresas */}
-      <Grid container spacing={3}>
-        {empresas.map((empresa) => (
-          <Grid item xs={12} sm={6} md={4} key={empresa._id}>
+      {/* Grid de Empresas - Centrado con máximo 3 columnas */}
+      <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
+        <Grid container spacing={3}>
+          {empresas.map((empresa) => (
+            <Grid item xs={12} sm={6} md={4} key={empresa._id}>
             <Card
               elevation={0}
               sx={{
@@ -271,6 +246,7 @@ export default function EmpresasPage() {
           </Grid>
         ))}
       </Grid>
+      </Box>
 
       {/* Dialog Nueva Empresa */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>

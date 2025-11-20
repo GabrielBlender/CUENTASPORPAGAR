@@ -36,6 +36,8 @@ import {
   Visibility,
   Description,
   GetApp,
+  Check,
+  Undo,
 } from '@mui/icons-material';
 
 interface TabPanelProps {
@@ -60,16 +62,30 @@ export default function EmpresaDetailPage() {
   const [empresa, setEmpresa] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedPDF, setSelectedPDF] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [facturas, setFacturas] = useState<any[]>([]);
   const [facturasPagadas, setFacturasPagadas] = useState<any[]>([]);
+  const [todasFacturas, setTodasFacturas] = useState<any[]>([]);
   const [loadingFacturas, setLoadingFacturas] = useState(false);
+  
+  // Filtros para el resumen
+  const [filtroProveedor, setFiltroProveedor] = useState('');
+  const [filtroFechaInicio, setFiltroFechaInicio] = useState('');
+  const [filtroFechaFin, setFiltroFechaFin] = useState('');
+
+  // Obtener el ID de los parámetros
+  const empresaId = params?.id as string;
 
   useEffect(() => {
+    if (!empresaId) {
+      router.push('/empresas');
+      return;
+    }
     fetchEmpresa();
     fetchCurrentUser();
     fetchFacturas();
-  }, [params.id]);
+  }, [empresaId]);
 
   const fetchCurrentUser = async () => {
     try {
@@ -84,8 +100,9 @@ export default function EmpresaDetailPage() {
   };
 
   const fetchEmpresa = async () => {
+    if (!empresaId) return;
     try {
-      const res = await fetch(`/api/empresas/${params.id}`);
+      const res = await fetch(`/api/empresas/${empresaId}`);
       if (res.ok) {
         const data = await res.json();
         setEmpresa(data.data);
@@ -96,12 +113,14 @@ export default function EmpresaDetailPage() {
   };
 
   const fetchFacturas = async () => {
+    if (!empresaId) return;
     setLoadingFacturas(true);
     try {
-      const res = await fetch(`/api/invoices?empresa_id=${params.id}`);
+      const res = await fetch(`/api/invoices?empresa_id=${empresaId}`);
       if (res.ok) {
         const data = await res.json();
         const todas = data.data || [];
+        setTodasFacturas(todas);
         setFacturas(todas.filter((f: any) => f.estado_pago !== 'pagado'));
         setFacturasPagadas(todas.filter((f: any) => f.estado_pago === 'pagado'));
       }
@@ -156,6 +175,52 @@ export default function EmpresaDetailPage() {
     } catch (error) {
       console.error('Error al eliminar factura:', error);
       alert('Error al eliminar factura');
+    }
+  };
+
+  const handleMarkAsPaid = async (id: string) => {
+    if (!confirm('¿Marcar esta factura como pagada?')) return;
+    
+    try {
+      const res = await fetch(`/api/invoices/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado_pago: 'pagado' }),
+      });
+      
+      if (res.ok) {
+        await fetchFacturas(); // Recargar lista
+        alert('Factura marcada como pagada');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al actualizar factura');
+      }
+    } catch (error) {
+      console.error('Error al marcar como pagada:', error);
+      alert('Error al actualizar factura');
+    }
+  };
+
+  const handleMarkAsPending = async (id: string) => {
+    if (!confirm('¿Marcar esta factura como pendiente?')) return;
+    
+    try {
+      const res = await fetch(`/api/invoices/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado_pago: 'pendiente' }),
+      });
+      
+      if (res.ok) {
+        await fetchFacturas(); // Recargar lista
+        alert('Factura marcada como pendiente');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al actualizar factura');
+      }
+    } catch (error) {
+      console.error('Error al marcar como pendiente:', error);
+      alert('Error al actualizar factura');
     }
   };
 
@@ -214,17 +279,25 @@ export default function EmpresaDetailPage() {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
+      const file = event.target.files[0];
+      if (file.name.endsWith('.xml')) {
+        setSelectedFile(file);
+      } else if (file.name.endsWith('.pdf')) {
+        setSelectedPDF(file);
+      }
     }
   };
 
   const handleUploadPDF = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !empresaId) return;
 
     setUploading(true);
     const formData = new FormData();
     formData.append('xml', selectedFile);
-    formData.append('empresa_id', params.id as string);
+    if (selectedPDF) {
+      formData.append('pdf', selectedPDF);
+    }
+    formData.append('empresa_id', empresaId);
 
     try {
       const res = await fetch('/api/invoices/upload', {
@@ -234,7 +307,9 @@ export default function EmpresaDetailPage() {
 
       if (res.ok) {
         setSelectedFile(null);
-        alert('Factura subida exitosamente');
+        setSelectedPDF(null);
+        await fetchFacturas();
+        alert('Factura procesada exitosamente');
       } else {
         const error = await res.json();
         alert(error.error || 'Error al subir factura');
@@ -257,36 +332,6 @@ export default function EmpresaDetailPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F8FAFC' }}>
-      {/* Header */}
-      <Box sx={{ bgcolor: 'white', borderBottom: '1px solid #E2E8F0', px: 4, py: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ bgcolor: '#2563EB', width: 48, height: 48 }}>
-              {currentUser?.nombre?.charAt(0) || 'U'}
-            </Avatar>
-            <Box>
-              <Typography variant="h6" fontWeight="700" color="text.primary">
-                {currentUser?.nombre || 'Usuario'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
-              </Typography>
-            </Box>
-          </Box>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={async () => {
-              await fetch('/api/auth/logout', { method: 'POST' });
-              router.push('/login');
-            }}
-            sx={{ textTransform: 'none' }}
-          >
-            Cerrar Sesión
-          </Button>
-        </Box>
-      </Box>
-
       <Box sx={{ p: 4 }}>
         {/* Botón volver */}
         <Button
@@ -298,18 +343,21 @@ export default function EmpresaDetailPage() {
         </Button>
 
         {/* Título de la empresa */}
-        <Typography variant="h4" fontWeight="700" gutterBottom color="text.primary">
-          {empresa.nombre}
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          Gestión de Cuentas por Pagar
-        </Typography>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Typography variant="h4" fontWeight="700" gutterBottom color="text.primary">
+            {empresa.nombre}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Gestión de Cuentas por Pagar
+          </Typography>
+        </Box>
 
-        {/* Tabs */}
+        {/* Tabs Centrados */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs
             value={tabValue}
             onChange={(_, newValue) => setTabValue(newValue)}
+            centered
             sx={{
               '& .MuiTab-root': {
                 textTransform: 'none',
@@ -319,54 +367,95 @@ export default function EmpresaDetailPage() {
               },
             }}
           >
-            <Tab label="Subir PDF" />
-            <Tab label="Dashboard" />
+            <Tab label="Subir Factura" />
             <Tab label="Facturas" />
-            <Tab label="Facturas Pagadas" />
-            <Tab label="Resumen" />
+            <Tab label="Pendientes" />
+            <Tab label="Pagadas" />
+            <Tab label="Resumen de Facturación" />
           </Tabs>
         </Box>
 
-        {/* Tab 0: Subir PDF */}
+        {/* Tab 0: Subir Factura */}
         <TabPanel value={tabValue} index={0}>
-          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, maxWidth: 600, mx: 'auto' }}>
+          <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2, maxWidth: 700, mx: 'auto' }}>
             <CardContent sx={{ p: 4 }}>
               <Box sx={{ textAlign: 'center', mb: 3 }}>
                 <FileUpload sx={{ fontSize: 48, color: '#2563EB', mb: 2 }} />
                 <Typography variant="h6" fontWeight="600" gutterBottom>
-                  Subir Factura PDF
+                  Subir Factura CFDI (XML)
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Selecciona un PDF para extraer datos automáticamente
+                  El archivo XML es obligatorio para extraer los datos de la factura
                 </Typography>
               </Box>
 
-              <Box
-                sx={{
-                  border: '2px dashed #CBD5E1',
-                  borderRadius: 2,
-                  p: 6,
-                  textAlign: 'center',
-                  bgcolor: '#F8FAFC',
-                  mb: 3,
-                }}
-              >
-                <input
-                  accept=".xml,.pdf"
-                  style={{ display: 'none' }}
-                  id="file-upload"
-                  type="file"
-                  onChange={handleFileChange}
-                />
-                <label htmlFor="file-upload">
-                  <Button variant="outlined" component="span" sx={{ textTransform: 'none' }}>
-                    Elegir archivo
-                  </Button>
-                </label>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  {selectedFile ? selectedFile.name : 'No se ha seleccionado ningún archivo'}
-                </Typography>
-              </Box>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={6}>
+                  <Box
+                    sx={{
+                      border: '2px dashed #CBD5E1',
+                      borderRadius: 2,
+                      p: 3,
+                      textAlign: 'center',
+                      bgcolor: selectedFile ? '#EFF6FF' : '#F8FAFC',
+                      borderColor: selectedFile ? '#2563EB' : '#CBD5E1',
+                    }}
+                  >
+                    <input
+                      accept=".xml"
+                      style={{ display: 'none' }}
+                      id="xml-upload"
+                      type="file"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setSelectedFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+                    <label htmlFor="xml-upload">
+                      <Button variant="outlined" component="span" size="small" sx={{ textTransform: 'none', mb: 1 }}>
+                        Elegir XML
+                      </Button>
+                    </label>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {selectedFile ? selectedFile.name : 'Requerido'}
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Box
+                    sx={{
+                      border: '2px dashed #CBD5E1',
+                      borderRadius: 2,
+                      p: 3,
+                      textAlign: 'center',
+                      bgcolor: selectedPDF ? '#F0FDF4' : '#F8FAFC',
+                      borderColor: selectedPDF ? '#10B981' : '#CBD5E1',
+                    }}
+                  >
+                    <input
+                      accept=".pdf"
+                      style={{ display: 'none' }}
+                      id="pdf-upload"
+                      type="file"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setSelectedPDF(e.target.files[0]);
+                        }
+                      }}
+                    />
+                    <label htmlFor="pdf-upload">
+                      <Button variant="outlined" component="span" size="small" sx={{ textTransform: 'none', mb: 1 }}>
+                        Elegir PDF
+                      </Button>
+                    </label>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {selectedPDF ? selectedPDF.name : 'Opcional'}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
 
               <Button
                 variant="contained"
@@ -376,7 +465,7 @@ export default function EmpresaDetailPage() {
                 disabled={!selectedFile || uploading}
                 sx={{ textTransform: 'none', boxShadow: 'none' }}
               >
-                {uploading ? 'Procesando...' : 'Procesar PDF'}
+                {uploading ? 'Procesando factura...' : 'Subir y Procesar Factura'}
               </Button>
             </CardContent>
           </Card>
@@ -602,6 +691,14 @@ export default function EmpresaDetailPage() {
                             <Stack direction="row" spacing={0.5} justifyContent="center">
                               <IconButton 
                                 size="small" 
+                                sx={{ color: '#10B981' }}
+                                onClick={() => handleMarkAsPaid(factura._id)}
+                                title="Marcar como pagada"
+                              >
+                                <Check fontSize="small" />
+                              </IconButton>
+                              <IconButton 
+                                size="small" 
                                 sx={{ color: '#64748B' }}
                                 onClick={() => factura.archivo_pdf && handleDownloadFile(factura.archivo_pdf, `${factura.numero_factura}.pdf`)}
                                 title="Descargar PDF"
@@ -741,12 +838,40 @@ export default function EmpresaDetailPage() {
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             <Stack direction="row" spacing={0.5} justifyContent="center">
-                              <IconButton size="small" sx={{ color: '#64748B' }}>
+                              <IconButton 
+                                size="small" 
+                                sx={{ color: '#F59E0B' }}
+                                onClick={() => handleMarkAsPending(factura._id)}
+                                title="Marcar como pendiente"
+                              >
+                                <Undo fontSize="small" />
+                              </IconButton>
+                              <IconButton 
+                                size="small" 
+                                sx={{ color: '#64748B' }}
+                                onClick={() => factura.archivo_pdf && handleDownloadFile(factura.archivo_pdf, `${factura.numero_factura}.pdf`)}
+                                title="Descargar PDF"
+                              >
                                 <Download fontSize="small" />
                               </IconButton>
-                              <IconButton size="small" sx={{ color: '#3B82F6' }}>
+                              <IconButton 
+                                size="small" 
+                                sx={{ color: '#3B82F6' }}
+                                onClick={() => factura.archivo_pdf && handleViewPDF(factura.archivo_pdf)}
+                                title="Ver detalles"
+                              >
                                 <Description fontSize="small" />
                               </IconButton>
+                              {currentUser?.role === 'admin' && (
+                                <IconButton 
+                                  size="small" 
+                                  sx={{ color: '#EF4444' }}
+                                  onClick={() => handleDeleteInvoice(factura._id)}
+                                  title="Eliminar"
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              )}
                             </Stack>
                           </td>
                         </tr>
