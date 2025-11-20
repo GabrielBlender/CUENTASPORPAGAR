@@ -139,29 +139,37 @@ export default function LoginPage() {
                 error={!!errors.email}
                 helperText={errors.email?.message}
                 autoComplete="email"
-                sx={{ mb: 3 }}
-                variant="outlined"
-                InputLabelProps={{
-                  sx: {
+                variant="filled"
+                sx={{ 
+                  mb: 3,
+                  '& .MuiFilledInput-root': {
+                    borderRadius: 2,
+                    backgroundColor: '#F8FAFC',
+                    '&:hover': {
+                      backgroundColor: '#F1F5F9',
+                    },
                     '&.Mui-focused': {
-                      color: '#2563EB',
+                      backgroundColor: '#F1F5F9',
+                    },
+                    '&:before': {
+                      borderBottom: '2px solid #E2E8F0',
+                    },
+                    '&:hover:before': {
+                      borderBottom: '2px solid #2563EB !important',
+                    },
+                    '&:after': {
+                      borderBottom: '2px solid #2563EB',
                     },
                   },
                 }}
-                InputProps={{
+                InputLabelProps={{
                   sx: {
-                    '& fieldset': {
-                      borderColor: '#E2E8F0',
-                      borderWidth: 2,
+                    color: '#64748B',
+                    '&.Mui-focused': {
+                      color: '#2563EB',
+                      fontWeight: 600,
                     },
-                    '&:hover fieldset': {
-                      borderColor: '#2563EB',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#2563EB',
-                    },
-                    borderRadius: 2,
-                  }
+                  },
                 }}
               />
 
@@ -173,29 +181,37 @@ export default function LoginPage() {
                 error={!!errors.password}
                 helperText={errors.password?.message}
                 autoComplete="current-password"
-                sx={{ mb: 4 }}
-                variant="outlined"
-                InputLabelProps={{
-                  sx: {
+                variant="filled"
+                sx={{ 
+                  mb: 4,
+                  '& .MuiFilledInput-root': {
+                    borderRadius: 2,
+                    backgroundColor: '#F8FAFC',
+                    '&:hover': {
+                      backgroundColor: '#F1F5F9',
+                    },
                     '&.Mui-focused': {
-                      color: '#2563EB',
+                      backgroundColor: '#F1F5F9',
+                    },
+                    '&:before': {
+                      borderBottom: '2px solid #E2E8F0',
+                    },
+                    '&:hover:before': {
+                      borderBottom: '2px solid #2563EB !important',
+                    },
+                    '&:after': {
+                      borderBottom: '2px solid #2563EB',
                     },
                   },
                 }}
-                InputProps={{
+                InputLabelProps={{
                   sx: {
-                    '& fieldset': {
-                      borderColor: '#E2E8F0',
-                      borderWidth: 2,
+                    color: '#64748B',
+                    '&.Mui-focused': {
+                      color: '#2563EB',
+                      fontWeight: 600,
                     },
-                    '&:hover fieldset': {
-                      borderColor: '#2563EB',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#2563EB',
-                    },
-                    borderRadius: 2,
-                  }
+                  },
                 }}
               />
 
