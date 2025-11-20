@@ -39,21 +39,21 @@ export class CFDIParser {
 
     // Datos generales del comprobante
     const cfdiData: CFDIData = {
-      version: comprobante['@_Version'] || '4.0',
-      serie: comprobante['@_Serie'] || '',
-      folio: comprobante['@_Folio'] || '',
+      version: String(comprobante['@_Version'] || '4.0'),
+      serie: String(comprobante['@_Serie'] || ''),
+      folio: String(comprobante['@_Folio'] || ''),
       fecha: new Date(comprobante['@_Fecha']),
-      formaPago: comprobante['@_FormaPago'] || '',
-      metodoPago: comprobante['@_MetodoPago'] || '',
-      tipoDeComprobante: comprobante['@_TipoDeComprobante'],
+      formaPago: String(comprobante['@_FormaPago'] || ''),
+      metodoPago: String(comprobante['@_MetodoPago'] || ''),
+      tipoDeComprobante: String(comprobante['@_TipoDeComprobante']),
       tipoCambio: parseFloat(comprobante['@_TipoCambio'] || '1'),
-      moneda: comprobante['@_Moneda'] || 'MXN',
+      moneda: String(comprobante['@_Moneda'] || 'MXN'),
       subtotal: parseFloat(comprobante['@_SubTotal'] || '0'),
       descuento: parseFloat(comprobante['@_Descuento'] || '0'),
       total: parseFloat(comprobante['@_Total'] || '0'),
-      sello: comprobante['@_Sello'] || '',
-      noCertificado: comprobante['@_NoCertificado'] || '',
-      certificado: comprobante['@_Certificado'] || '',
+      sello: String(comprobante['@_Sello'] || ''),
+      noCertificado: String(comprobante['@_NoCertificado'] || ''),
+      certificado: String(comprobante['@_Certificado'] || ''),
       emisor: {
         rfc: '',
         nombre: '',
@@ -88,9 +88,9 @@ export class CFDIParser {
     const emisor = comprobante['cfdi:Emisor'] || comprobante['Emisor'];
     if (emisor) {
       cfdiData.emisor = {
-        rfc: emisor['@_Rfc'] || '',
-        nombre: emisor['@_Nombre'] || '',
-        regimenFiscal: emisor['@_RegimenFiscal'] || '',
+        rfc: String(emisor['@_Rfc'] || ''),
+        nombre: String(emisor['@_Nombre'] || ''),
+        regimenFiscal: String(emisor['@_RegimenFiscal'] || ''),
       };
     }
 
@@ -98,11 +98,11 @@ export class CFDIParser {
     const receptor = comprobante['cfdi:Receptor'] || comprobante['Receptor'];
     if (receptor) {
       cfdiData.receptor = {
-        rfc: receptor['@_Rfc'] || '',
-        nombre: receptor['@_Nombre'] || '',
-        domicilioFiscalReceptor: receptor['@_DomicilioFiscalReceptor'] || '',
-        regimenFiscalReceptor: receptor['@_RegimenFiscalReceptor'] || '',
-        usoCFDI: receptor['@_UsoCFDI'] || '',
+        rfc: String(receptor['@_Rfc'] || ''),
+        nombre: String(receptor['@_Nombre'] || ''),
+        domicilioFiscalReceptor: String(receptor['@_DomicilioFiscalReceptor'] || ''),
+        regimenFiscalReceptor: String(receptor['@_RegimenFiscalReceptor'] || ''),
+        usoCFDI: String(receptor['@_UsoCFDI'] || ''),
       };
     }
 
@@ -113,16 +113,16 @@ export class CFDIParser {
     if (conceptos) {
       const conceptosArray = Array.isArray(conceptos) ? conceptos : [conceptos];
       cfdiData.conceptos = conceptosArray.map((concepto: any) => ({
-        claveProdServ: concepto['@_ClaveProdServ'] || '',
-        noIdentificacion: concepto['@_NoIdentificacion'],
+        claveProdServ: String(concepto['@_ClaveProdServ'] || ''),
+        noIdentificacion: concepto['@_NoIdentificacion'] ? String(concepto['@_NoIdentificacion']) : undefined,
         cantidad: parseFloat(concepto['@_Cantidad'] || '0'),
-        claveUnidad: concepto['@_ClaveUnidad'] || '',
-        unidad: concepto['@_Unidad'] || '',
-        descripcion: concepto['@_Descripcion'] || '',
+        claveUnidad: String(concepto['@_ClaveUnidad'] || ''),
+        unidad: String(concepto['@_Unidad'] || ''),
+        descripcion: String(concepto['@_Descripcion'] || ''),
         valorUnitario: parseFloat(concepto['@_ValorUnitario'] || '0'),
         importe: parseFloat(concepto['@_Importe'] || '0'),
         descuento: parseFloat(concepto['@_Descuento'] || '0'),
-        objetoImp: concepto['@_ObjetoImp'] || '01',
+        objetoImp: String(concepto['@_ObjetoImp'] || '01'),
       }));
     }
 
@@ -144,8 +144,8 @@ export class CFDIParser {
         const trasladosArray = Array.isArray(traslados) ? traslados : [traslados];
         cfdiData.impuestos.traslados = trasladosArray.map((traslado: any) => ({
           base: parseFloat(traslado['@_Base'] || '0'),
-          impuesto: traslado['@_Impuesto'] || '',
-          tipoFactor: traslado['@_TipoFactor'] || '',
+          impuesto: String(traslado['@_Impuesto'] || ''),
+          tipoFactor: String(traslado['@_TipoFactor'] || ''),
           tasaOCuota: parseFloat(traslado['@_TasaOCuota'] || '0'),
           importe: parseFloat(traslado['@_Importe'] || '0'),
         }));
@@ -158,7 +158,7 @@ export class CFDIParser {
       if (retenciones) {
         const retencionesArray = Array.isArray(retenciones) ? retenciones : [retenciones];
         cfdiData.impuestos.retenciones = retencionesArray.map((retencion: any) => ({
-          impuesto: retencion['@_Impuesto'] || '',
+          impuesto: String(retencion['@_Impuesto'] || ''),
           importe: parseFloat(retencion['@_Importe'] || '0'),
         }));
       }
@@ -171,13 +171,13 @@ export class CFDIParser {
         complemento['tfd:TimbreFiscalDigital'] || complemento['TimbreFiscalDigital'];
       if (tfd) {
         cfdiData.timbreFiscalDigital = {
-          uuid: tfd['@_UUID'] || '',
+          uuid: String(tfd['@_UUID'] || ''),
           fechaTimbrado: new Date(tfd['@_FechaTimbrado']),
-          rfcProvCertif: tfd['@_RfcProvCertif'] || '',
-          selloCFD: tfd['@_SelloCFD'] || '',
-          noCertificadoSAT: tfd['@_NoCertificadoSAT'] || '',
-          selloSAT: tfd['@_SelloSAT'] || '',
-          version: tfd['@_Version'] || '1.1',
+          rfcProvCertif: String(tfd['@_RfcProvCertif'] || ''),
+          selloCFD: String(tfd['@_SelloCFD'] || ''),
+          noCertificadoSAT: String(tfd['@_NoCertificadoSAT'] || ''),
+          selloSAT: String(tfd['@_SelloSAT'] || ''),
+          version: String(tfd['@_Version'] || '1.1'),
         };
       }
     }
